@@ -5,23 +5,6 @@
  - Also display the price of the range of the asset.  So it should have two columns for the range of the asset
  
  */
--- with contract_list (address, name) as (
--- values 
--- (0x, ' ')
--- ),
--- WITH contract_list (address, name) as (
---     VALUES 
---     -- (0xdAC17F958D2ee523a2206206994597C13D831ec7, 'Tether USD(USDT)')
---     -- (0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, 'USDC'),
---     -- (0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84, 'Lido Staked Ether(stETH)'),
---     -- (0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce, 'Shiba Inu(SHIB)'),
---     -- (0x2260fac5e5542a773aa44fbcfedf7c193bc2c599, 'Wrapped BTC(WBTC)'),
---     -- (0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 'Wrapped ETH(WETH)'),
---     -- (0x514910771AF9Ca656af840dff83E8264EcF986CA, 'LINK'),
---     -- (0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D, 'UNI'),
---     -- (0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0, 'MATIC'),
---     -- (0xF57e7e7C23978C3cAEC3C3548E3D615c346e79fF, 'IMX')
--- ),
 with contract_list (address, name) as (
   values
     (0x, ' ')
