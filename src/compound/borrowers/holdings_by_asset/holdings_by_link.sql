@@ -100,8 +100,7 @@ balance_classification AS (
 )
 SELECT
     erc20_usd_Holdings,
-    COUNT(wallet_address) AS Addresses,
-    SUM(Value_of_Holdings) AS sum_value_of_holding
+    COUNT(wallet_address) AS Addresses
 FROM
     balance_classification
 GROUP BY
