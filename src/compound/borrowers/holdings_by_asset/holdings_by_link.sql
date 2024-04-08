@@ -37,14 +37,17 @@ compiled AS (
                 a.holding DESC
         ) AS Ranking,
         a.holding AS Amount_Held,
-        a.holding * (
-            SELECT
-                price
-            FROM
-                prices.usd_latest
-            WHERE
-                blockchain = 'ethereum'
-                AND contract_address = 0x514910771AF9Ca656af840dff83E8264EcF986CA
+        ROUND(
+            a.holding * (
+                SELECT
+                    price
+                FROM
+                    prices.usd_latest
+                WHERE
+                    blockchain = 'ethereum'
+                    AND contract_address = 0x514910771AF9Ca656af840dff83E8264EcF986CA
+            ),
+            2
         ) AS Value_of_Holdings,
         CASE
             WHEN 'ethereum' = 'ethereum' THEN '<a href=https://etherscan.io//address/' || CAST(a.address AS VARCHAR) || ' target=_blank">' || CAST(a.address AS VARCHAR) || '</a>'
