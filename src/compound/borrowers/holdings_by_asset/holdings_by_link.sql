@@ -1,41 +1,34 @@
 WITH holdings AS (
     SELECT
-        DISTINCT address,
-        holding,
-        0x514910771AF9Ca656af840dff83E8264EcF986CA AS token_address
+        address,
+        SUM(total) AS holding
     FROM
         (
             SELECT
-                SUM(total) AS holding,
-                address
+                "to" AS address,
+                SUM(CAST(value AS DOUBLE) / POW(10, b.decimals)) AS total
             FROM
-                (
-                    SELECT
-                        SUM(CAST(value AS DOUBLE) / POW(10, b.decimals)) AS total,
-                        "to" AS address
-                    FROM
-                        erc20_ethereum.evt_Transfer a
-                        JOIN tokens.erc20 b ON a.contract_address = b.contract_address
-                    WHERE
-                        a.contract_address = 0x514910771AF9Ca656af840dff83E8264EcF986CA
-                    GROUP BY
-                        2
-                    UNION
-                    ALL
-                    SELECT
-                        - SUM(CAST(value AS DOUBLE) / POW(10, b.decimals)) AS total,
-                        "from" AS address
-                    FROM
-                        erc20_ethereum.evt_Transfer a
-                        JOIN tokens.erc20 b ON a.contract_address = b.contract_address
-                    WHERE
-                        a.contract_address = 0x514910771AF9Ca656af840dff83E8264EcF986CA
-                    GROUP BY
-                        2
-                ) t
+                erc20_ethereum.evt_Transfer a
+                JOIN tokens.erc20 b ON a.contract_address = b.contract_address
+            WHERE
+                a.contract_address = 0x514910771AF9Ca656af840dff83E8264EcF986CA
             GROUP BY
-                address
+                "to"
+            UNION
+            ALL
+            SELECT
+                "from" AS address,
+                - SUM(CAST(value AS DOUBLE) / POW(10, b.decimals)) AS total
+            FROM
+                erc20_ethereum.evt_Transfer a
+                JOIN tokens.erc20 b ON a.contract_address = b.contract_address
+            WHERE
+                a.contract_address = 0x514910771AF9Ca656af840dff83E8264EcF986CA
+            GROUP BY
+                "from"
         ) t
+    GROUP BY
+        address
 ),
 compiled AS (
     SELECT
@@ -92,16 +85,28 @@ balance_classification AS (
             WHEN Value_of_Holdings >= 1000000
             AND Value_of_Holdings < 10000000 THEN '95. [ 100W,1000W) USD'
             WHEN Value_of_Holdings >= 10000000 THEN '96.  [1000W, ...) USD'
-        END AS erc20_usd_Holdings
+        END AS erc20_usd_Holdings,
+        CASE
+            WHEN Amount_Held < 100 THEN '1. [0, 100) LINK'
+            WHEN Amount_Held >= 100
+            AND Amount_Held < 500 THEN '2. [100, 500) LINK'
+            WHEN Amount_Held >= 500
+            AND Amount_Held < 1000 THEN '3. [500, 1000) LINK'
+            WHEN Amount_Held >= 1000 THEN '4. [1000, ...) LINK'
+        END AS chainlink_holdings
     FROM
-        compiled
+        compiled a
     ORDER BY
         2 DESC
 )
 SELECT
     erc20_usd_Holdings,
+    chainlink_holdings,
     COUNT(wallet_address) AS Addresses
 FROM
     balance_classification
 GROUP BY
-    1;
+    erc20_usd_Holdings,
+    chainlink_holdings
+ORDER BY
+    COUNT(wallet_address) DESC;
