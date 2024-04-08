@@ -57,42 +57,38 @@ balance_classification AS (
         wallet_address,
         Value_of_Holdings,
         CASE
-            WHEN Value_of_Holdings < 0.01 THEN '1. [0, 0.01) USD'
-            WHEN Value_of_Holdings >= 0.01
-            AND Value_of_Holdings < 1 THEN '2. [0.01, 1) USD'
-            WHEN Value_of_Holdings >= 1
-            AND Value_of_Holdings < 10 THEN '3. [1,10) USD'
-            WHEN Value_of_Holdings >= 10
-            AND Value_of_Holdings < 100 THEN '4. [10,100) USD'
+            WHEN Value_of_Holdings < 50 THEN '[0, 50) USD'
+            WHEN Value_of_Holdings >= 50
+            AND Value_of_Holdings < 100 THEN '[50, 100) USD'
             WHEN Value_of_Holdings >= 100
-            AND Value_of_Holdings < 200 THEN '5. [100,200) USD'
+            AND Value_of_Holdings < 200 THEN '[100,200) USD'
             WHEN Value_of_Holdings >= 200
-            AND Value_of_Holdings < 500 THEN '6. [200,500) USD'
+            AND Value_of_Holdings < 500 THEN '[200,500) USD'
             WHEN Value_of_Holdings >= 500
-            AND Value_of_Holdings < 1000 THEN '7. [500,1000) USD'
+            AND Value_of_Holdings < 1000 THEN '[500,1000) USD'
             WHEN Value_of_Holdings >= 1000
-            AND Value_of_Holdings < 2000 THEN '8. [1000,2000) USD'
+            AND Value_of_Holdings < 2000 THEN '[1000,2000) USD'
             WHEN Value_of_Holdings >= 2000
-            AND Value_of_Holdings < 5000 THEN '9. [2000,5000) USD'
+            AND Value_of_Holdings < 5000 THEN '[2000,5000) USD'
             WHEN Value_of_Holdings >= 5000
-            AND Value_of_Holdings < 10000 THEN '91. [5000,10000) USD'
+            AND Value_of_Holdings < 10000 THEN '[5000,10000) USD'
             WHEN Value_of_Holdings >= 10000
-            AND Value_of_Holdings < 20000 THEN '92. [1W,2W) USD'
+            AND Value_of_Holdings < 20000 THEN '[1W,2W) USD'
             WHEN Value_of_Holdings >= 20000
-            AND Value_of_Holdings < 100000 THEN '93. [ 2W,10W) USD'
+            AND Value_of_Holdings < 100000 THEN '[ 2W,10W) USD'
             WHEN Value_of_Holdings >= 100000
-            AND Value_of_Holdings < 1000000 THEN '94. [ 10W,100W) USD'
+            AND Value_of_Holdings < 1000000 THEN '[ 10W,100W) USD'
             WHEN Value_of_Holdings >= 1000000
-            AND Value_of_Holdings < 10000000 THEN '95. [ 100W,1000W) USD'
-            WHEN Value_of_Holdings >= 10000000 THEN '96.  [1000W, ...) USD'
+            AND Value_of_Holdings < 10000000 THEN '[ 100W,1000W) USD'
+            WHEN Value_of_Holdings >= 10000000 THEN '[1000W, ...) USD'
         END AS erc20_usd_Holdings,
         CASE
-            WHEN Amount_Held < 100 THEN '1. [0, 100) LINK'
+            WHEN Amount_Held < 100 THEN '[0, 100) LINK'
             WHEN Amount_Held >= 100
-            AND Amount_Held < 500 THEN '2. [100, 500) LINK'
+            AND Amount_Held < 500 THEN '[100, 500) LINK'
             WHEN Amount_Held >= 500
-            AND Amount_Held < 1000 THEN '3. [500, 1000) LINK'
-            WHEN Amount_Held >= 1000 THEN '4. [1000, ...) LINK'
+            AND Amount_Held < 1000 THEN '[500, 1000) LINK'
+            WHEN Amount_Held >= 1000 THEN '[1000, ...) LINK'
         END AS chainlink_holdings
     FROM
         compiled a
