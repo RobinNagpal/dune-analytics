@@ -8,12 +8,21 @@ WITH link_price AS (
         AND contract_address = 0x514910771AF9Ca656af840dff83E8264EcF986CA
     LIMIT
         1
-), holdings AS (
+), withdrawers AS (
     SELECT
-        address,
+        to AS address
+    FROM
+        compound_v3_ethereum.Comet_evt_Withdraw
+    GROUP BY
+        to
+),
+holdings AS (
+    SELECT
+        w.address,
         SUM(total) AS holding
     FROM
-        (
+        withdrawers w
+        JOIN (
             SELECT
                 "to" AS address,
                 SUM(CAST(value AS DOUBLE) / POW(10, b.decimals)) AS total
@@ -36,9 +45,9 @@ WITH link_price AS (
                 a.contract_address = 0x514910771AF9Ca656af840dff83E8264EcF986CA
             GROUP BY
                 "from"
-        ) t
+        ) transfers ON w.address = transfers.address
     GROUP BY
-        address
+        w.address
 ),
 compiled AS (
     SELECT
