@@ -51,10 +51,6 @@ holdings AS (
 ),
 compiled AS (
     SELECT
-        ROW_NUMBER() OVER (
-            ORDER BY
-                a.holding DESC
-        ) AS Ranking,
         ROUND(
             a.holding * (
                 SELECT
@@ -64,9 +60,7 @@ compiled AS (
             ),
             2
         ) AS Value_of_Holdings,
-        CASE
-            WHEN 'ethereum' = 'ethereum' THEN '<a href=https://etherscan.io//address/' || CAST(a.address AS VARCHAR) || ' target=_blank">' || CAST(a.address AS VARCHAR) || '</a>'
-        END AS wallet_address
+        a.address AS wallet_address
     FROM
         holdings a
 ),
@@ -504,4 +498,4 @@ GROUP BY
     erc20_usd_Holdings,
     chainlink_holdings
 ORDER BY
-    COUNT(wallet_address) DESC;
+    MIN(Value_of_Holdings);
