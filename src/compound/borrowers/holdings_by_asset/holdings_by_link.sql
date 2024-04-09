@@ -1,4 +1,14 @@
-WITH holdings AS (
+WITH link_price AS (
+    SELECT
+        price
+    FROM
+        prices.usd_latest
+    WHERE
+        blockchain = 'ethereum'
+        AND contract_address = 0x514910771AF9Ca656af840dff83E8264EcF986CA
+    LIMIT
+        1
+), holdings AS (
     SELECT
         address,
         SUM(total) AS holding
@@ -86,12 +96,345 @@ balance_classification AS (
             WHEN Value_of_Holdings >= 10000000 THEN '[1000W, ...) USD'
         END AS erc20_usd_Holdings,
         CASE
-            WHEN Amount_Held < 100 THEN '[0, 100) LINK'
-            WHEN Amount_Held >= 100
-            AND Amount_Held < 500 THEN '[100, 500) LINK'
-            WHEN Amount_Held >= 500
-            AND Amount_Held < 1000 THEN '[500, 1000) LINK'
-            WHEN Amount_Held >= 1000 THEN '[1000, ...) LINK'
+            WHEN Value_of_Holdings < 50 THEN CONCAT(
+                '[0, ',
+                CAST(
+                    ROUND(
+                        50 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ') LINK'
+            )
+            WHEN Value_of_Holdings >= 50
+            AND Value_of_Holdings < 100 THEN CONCAT(
+                '[',
+                CAST(
+                    ROUND(
+                        50 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ', ',
+                CAST(
+                    ROUND(
+                        100 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ') LINK'
+            )
+            WHEN Value_of_Holdings >= 100
+            AND Value_of_Holdings < 200 THEN CONCAT(
+                '[',
+                CAST(
+                    ROUND(
+                        100 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ', ',
+                CAST(
+                    ROUND(
+                        200 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ') LINK'
+            )
+            WHEN Value_of_Holdings >= 200
+            AND Value_of_Holdings < 500 THEN CONCAT(
+                '[',
+                CAST(
+                    ROUND(
+                        200 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ', ',
+                CAST(
+                    ROUND(
+                        500 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ') LINK'
+            )
+            WHEN Value_of_Holdings >= 500
+            AND Value_of_Holdings < 1000 THEN CONCAT(
+                '[',
+                CAST(
+                    ROUND(
+                        500 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ', ',
+                CAST(
+                    ROUND(
+                        1000 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ') LINK'
+            )
+            WHEN Value_of_Holdings >= 1000
+            AND Value_of_Holdings < 2000 THEN CONCAT(
+                '[',
+                CAST(
+                    ROUND(
+                        1000 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ', ',
+                CAST(
+                    ROUND(
+                        2000 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ') LINK'
+            )
+            WHEN Value_of_Holdings >= 2000
+            AND Value_of_Holdings < 5000 THEN CONCAT(
+                '[',
+                CAST(
+                    ROUND(
+                        2000 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ', ',
+                CAST(
+                    ROUND(
+                        5000 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ') LINK'
+            )
+            WHEN Value_of_Holdings >= 5000
+            AND Value_of_Holdings < 10000 THEN CONCAT(
+                '[',
+                CAST(
+                    ROUND(
+                        5000 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ', ',
+                CAST(
+                    ROUND(
+                        10000 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ') LINK'
+            )
+            WHEN Value_of_Holdings >= 10000
+            AND Value_of_Holdings < 20000 THEN CONCAT(
+                '[',
+                CAST(
+                    ROUND(
+                        10000 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ', ',
+                CAST(
+                    ROUND(
+                        20000 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ') LINK'
+            )
+            WHEN Value_of_Holdings >= 20000
+            AND Value_of_Holdings < 100000 THEN CONCAT(
+                '[',
+                CAST(
+                    ROUND(
+                        20000 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ', ',
+                CAST(
+                    ROUND(
+                        100000 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ') LINK'
+            )
+            WHEN Value_of_Holdings >= 100000
+            AND Value_of_Holdings < 1000000 THEN CONCAT(
+                '[',
+                CAST(
+                    ROUND(
+                        100000 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ', ',
+                CAST(
+                    ROUND(
+                        1000000 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ') LINK'
+            )
+            WHEN Value_of_Holdings >= 1000000
+            AND Value_of_Holdings < 10000000 THEN CONCAT(
+                '[',
+                CAST(
+                    ROUND(
+                        1000000 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ', ',
+                CAST(
+                    ROUND(
+                        10000000 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ') LINK'
+            )
+            WHEN Value_of_Holdings >= 10000000 THEN CONCAT(
+                '[',
+                CAST(
+                    ROUND(
+                        10000000 / (
+                            SELECT
+                                price
+                            FROM
+                                link_price
+                        ),
+                        2
+                    ) AS VARCHAR
+                ),
+                ', ',
+                '...) LINK'
+            )
         END AS chainlink_holdings
     FROM
         compiled a
