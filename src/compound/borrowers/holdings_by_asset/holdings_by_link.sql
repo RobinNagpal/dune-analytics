@@ -1,11 +1,12 @@
 WITH link_price AS (
     SELECT
-        price
+        price,
+        (SELECT symbol FROM tokens.erc20 WHERE contract_address = {{token_address}}  LIMIT 1) AS symbol
     FROM
         prices.usd_latest
     WHERE
         blockchain = 'ethereum'
-        AND contract_address = 0x514910771AF9Ca656af840dff83E8264EcF986CA
+        AND contract_address = {{token_address}}
     LIMIT
         1
 ), withdrawers AS (
@@ -30,7 +31,7 @@ holdings AS (
                 erc20_ethereum.evt_Transfer a
                 JOIN tokens.erc20 b ON a.contract_address = b.contract_address
             WHERE
-                a.contract_address = 0x514910771AF9Ca656af840dff83E8264EcF986CA
+                a.contract_address = {{token_address}}
             GROUP BY
                 "to"
             UNION
@@ -42,7 +43,7 @@ holdings AS (
                 erc20_ethereum.evt_Transfer a
                 JOIN tokens.erc20 b ON a.contract_address = b.contract_address
             WHERE
-                a.contract_address = 0x514910771AF9Ca656af840dff83E8264EcF986CA
+                a.contract_address = {{token_address}}
             GROUP BY
                 "from"
         ) transfers ON w.address = transfers.address
@@ -110,7 +111,8 @@ balance_classification AS (
                         ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
-                ') LINK'
+                ') ',
+                (SELECT symbol FROM link_price)
             )
             WHEN Value_of_Holdings >= 50
             AND Value_of_Holdings < 100 THEN CONCAT(
@@ -142,7 +144,8 @@ balance_classification AS (
                         ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
-                ') LINK'
+                ') ', 
+                (SELECT symbol FROM link_price)
             )
             WHEN Value_of_Holdings >= 100
             AND Value_of_Holdings < 200 THEN CONCAT(
@@ -174,7 +177,8 @@ balance_classification AS (
                         ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
-                ') LINK'
+                ') ', 
+                (SELECT symbol FROM link_price)
             )
             WHEN Value_of_Holdings >= 200
             AND Value_of_Holdings < 500 THEN CONCAT(
@@ -206,7 +210,8 @@ balance_classification AS (
                         ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
-                ') LINK'
+                ') ',
+                (SELECT symbol FROM link_price)
             )
             WHEN Value_of_Holdings >= 500
             AND Value_of_Holdings < 1000 THEN CONCAT(
@@ -238,7 +243,8 @@ balance_classification AS (
                         ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
-                ') LINK'
+                ') ',
+                (SELECT symbol FROM link_price)
             )
             WHEN Value_of_Holdings >= 1000
             AND Value_of_Holdings < 2000 THEN CONCAT(
@@ -270,7 +276,8 @@ balance_classification AS (
                         ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
-                ') LINK'
+                ') ',
+                (SELECT symbol FROM link_price)
             )
             WHEN Value_of_Holdings >= 2000
             AND Value_of_Holdings < 5000 THEN CONCAT(
@@ -302,7 +309,8 @@ balance_classification AS (
                         ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
-                ') LINK'
+                ') ',
+                (SELECT symbol FROM link_price)
             )
             WHEN Value_of_Holdings >= 5000
             AND Value_of_Holdings < 10000 THEN CONCAT(
@@ -334,7 +342,8 @@ balance_classification AS (
                         ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
-                ') LINK'
+                ') ',
+                (SELECT symbol FROM link_price)
             )
             WHEN Value_of_Holdings >= 10000
             AND Value_of_Holdings < 20000 THEN CONCAT(
@@ -366,7 +375,9 @@ balance_classification AS (
                         ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
-                ') LINK'
+                ') ',
+                (SELECT symbol FROM link_price)
+
             )
             WHEN Value_of_Holdings >= 20000
             AND Value_of_Holdings < 100000 THEN CONCAT(
@@ -398,7 +409,8 @@ balance_classification AS (
                         ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
-                ') LINK'
+                ') ',
+                (SELECT symbol FROM link_price)
             )
             WHEN Value_of_Holdings >= 100000
             AND Value_of_Holdings < 1000000 THEN CONCAT(
@@ -430,7 +442,8 @@ balance_classification AS (
                         ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
-                ') LINK'
+                ') ',
+                (SELECT symbol FROM link_price)
             )
             WHEN Value_of_Holdings >= 1000000
             AND Value_of_Holdings < 10000000 THEN CONCAT(
@@ -462,7 +475,8 @@ balance_classification AS (
                         ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
-                ') LINK'
+                ') ',
+                (SELECT symbol FROM link_price)
             )
             WHEN Value_of_Holdings >= 10000000 THEN CONCAT(
                 '[',
@@ -480,7 +494,8 @@ balance_classification AS (
                     ) AS VARCHAR
                 ),
                 ', ',
-                '...) LINK'
+                '...) ',
+                (SELECT symbol FROM link_price)
             )
         END AS chainlink_holdings
     FROM
