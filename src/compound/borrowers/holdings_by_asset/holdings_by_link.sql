@@ -46,16 +46,12 @@ compiled AS (
             ORDER BY
                 a.holding DESC
         ) AS Ranking,
-        a.holding AS Amount_Held,
         ROUND(
             a.holding * (
                 SELECT
                     price
-                FROM
-                    prices.usd_latest
-                WHERE
-                    blockchain = 'ethereum'
-                    AND contract_address = 0x514910771AF9Ca656af840dff83E8264EcF986CA
+                from
+                    link_price
             ),
             2
         ) AS Value_of_Holdings,
@@ -99,14 +95,16 @@ balance_classification AS (
             WHEN Value_of_Holdings < 50 THEN CONCAT(
                 '[0, ',
                 CAST(
-                    ROUND(
-                        50 / (
-                            SELECT
-                                price
-                            FROM
-                                link_price
-                        ),
-                        2
+                    CAST(
+                        ROUND(
+                            50 / (
+                                SELECT
+                                    price
+                                FROM
+                                    link_price
+                            ),
+                            2
+                        ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
                 ') LINK'
@@ -115,26 +113,30 @@ balance_classification AS (
             AND Value_of_Holdings < 100 THEN CONCAT(
                 '[',
                 CAST(
-                    ROUND(
-                        50 / (
-                            SELECT
-                                price
-                            FROM
-                                link_price
-                        ),
-                        2
+                    CAST(
+                        ROUND(
+                            50 / (
+                                SELECT
+                                    price
+                                FROM
+                                    link_price
+                            ),
+                            2
+                        ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
                 ', ',
                 CAST(
-                    ROUND(
-                        100 / (
-                            SELECT
-                                price
-                            FROM
-                                link_price
-                        ),
-                        2
+                    CAST(
+                        ROUND(
+                            100 / (
+                                SELECT
+                                    price
+                                FROM
+                                    link_price
+                            ),
+                            2
+                        ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
                 ') LINK'
@@ -143,26 +145,30 @@ balance_classification AS (
             AND Value_of_Holdings < 200 THEN CONCAT(
                 '[',
                 CAST(
-                    ROUND(
-                        100 / (
-                            SELECT
-                                price
-                            FROM
-                                link_price
-                        ),
-                        2
+                    CAST(
+                        ROUND(
+                            100 / (
+                                SELECT
+                                    price
+                                FROM
+                                    link_price
+                            ),
+                            2
+                        ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
                 ', ',
                 CAST(
-                    ROUND(
-                        200 / (
-                            SELECT
-                                price
-                            FROM
-                                link_price
-                        ),
-                        2
+                    CAST(
+                        ROUND(
+                            200 / (
+                                SELECT
+                                    price
+                                FROM
+                                    link_price
+                            ),
+                            2
+                        ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
                 ') LINK'
@@ -171,26 +177,30 @@ balance_classification AS (
             AND Value_of_Holdings < 500 THEN CONCAT(
                 '[',
                 CAST(
-                    ROUND(
-                        200 / (
-                            SELECT
-                                price
-                            FROM
-                                link_price
-                        ),
-                        2
+                    CAST(
+                        ROUND(
+                            200 / (
+                                SELECT
+                                    price
+                                FROM
+                                    link_price
+                            ),
+                            2
+                        ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
                 ', ',
                 CAST(
-                    ROUND(
-                        500 / (
-                            SELECT
-                                price
-                            FROM
-                                link_price
-                        ),
-                        2
+                    CAST(
+                        ROUND(
+                            500 / (
+                                SELECT
+                                    price
+                                FROM
+                                    link_price
+                            ),
+                            2
+                        ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
                 ') LINK'
@@ -199,26 +209,30 @@ balance_classification AS (
             AND Value_of_Holdings < 1000 THEN CONCAT(
                 '[',
                 CAST(
-                    ROUND(
-                        500 / (
-                            SELECT
-                                price
-                            FROM
-                                link_price
-                        ),
-                        2
+                    CAST(
+                        ROUND(
+                            500 / (
+                                SELECT
+                                    price
+                                FROM
+                                    link_price
+                            ),
+                            2
+                        ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
                 ', ',
                 CAST(
-                    ROUND(
-                        1000 / (
-                            SELECT
-                                price
-                            FROM
-                                link_price
-                        ),
-                        2
+                    CAST(
+                        ROUND(
+                            1000 / (
+                                SELECT
+                                    price
+                                FROM
+                                    link_price
+                            ),
+                            2
+                        ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
                 ') LINK'
@@ -227,26 +241,30 @@ balance_classification AS (
             AND Value_of_Holdings < 2000 THEN CONCAT(
                 '[',
                 CAST(
-                    ROUND(
-                        1000 / (
-                            SELECT
-                                price
-                            FROM
-                                link_price
-                        ),
-                        2
+                    CAST(
+                        ROUND(
+                            1000 / (
+                                SELECT
+                                    price
+                                FROM
+                                    link_price
+                            ),
+                            2
+                        ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
                 ', ',
                 CAST(
-                    ROUND(
-                        2000 / (
-                            SELECT
-                                price
-                            FROM
-                                link_price
-                        ),
-                        2
+                    CAST(
+                        ROUND(
+                            2000 / (
+                                SELECT
+                                    price
+                                FROM
+                                    link_price
+                            ),
+                            2
+                        ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
                 ') LINK'
@@ -255,26 +273,30 @@ balance_classification AS (
             AND Value_of_Holdings < 5000 THEN CONCAT(
                 '[',
                 CAST(
-                    ROUND(
-                        2000 / (
-                            SELECT
-                                price
-                            FROM
-                                link_price
-                        ),
-                        2
+                    CAST(
+                        ROUND(
+                            2000 / (
+                                SELECT
+                                    price
+                                FROM
+                                    link_price
+                            ),
+                            2
+                        ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
                 ', ',
                 CAST(
-                    ROUND(
-                        5000 / (
-                            SELECT
-                                price
-                            FROM
-                                link_price
-                        ),
-                        2
+                    CAST(
+                        ROUND(
+                            5000 / (
+                                SELECT
+                                    price
+                                FROM
+                                    link_price
+                            ),
+                            2
+                        ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
                 ') LINK'
@@ -283,26 +305,30 @@ balance_classification AS (
             AND Value_of_Holdings < 10000 THEN CONCAT(
                 '[',
                 CAST(
-                    ROUND(
-                        5000 / (
-                            SELECT
-                                price
-                            FROM
-                                link_price
-                        ),
-                        2
+                    CAST(
+                        ROUND(
+                            5000 / (
+                                SELECT
+                                    price
+                                FROM
+                                    link_price
+                            ),
+                            2
+                        ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
                 ', ',
                 CAST(
-                    ROUND(
-                        10000 / (
-                            SELECT
-                                price
-                            FROM
-                                link_price
-                        ),
-                        2
+                    CAST(
+                        ROUND(
+                            10000 / (
+                                SELECT
+                                    price
+                                FROM
+                                    link_price
+                            ),
+                            2
+                        ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
                 ') LINK'
@@ -311,26 +337,30 @@ balance_classification AS (
             AND Value_of_Holdings < 20000 THEN CONCAT(
                 '[',
                 CAST(
-                    ROUND(
-                        10000 / (
-                            SELECT
-                                price
-                            FROM
-                                link_price
-                        ),
-                        2
+                    CAST(
+                        ROUND(
+                            10000 / (
+                                SELECT
+                                    price
+                                FROM
+                                    link_price
+                            ),
+                            2
+                        ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
                 ', ',
                 CAST(
-                    ROUND(
-                        20000 / (
-                            SELECT
-                                price
-                            FROM
-                                link_price
-                        ),
-                        2
+                    CAST(
+                        ROUND(
+                            20000 / (
+                                SELECT
+                                    price
+                                FROM
+                                    link_price
+                            ),
+                            2
+                        ) AS DECIMAL(18, 2)
                     ) AS VARCHAR
                 ),
                 ') LINK'
