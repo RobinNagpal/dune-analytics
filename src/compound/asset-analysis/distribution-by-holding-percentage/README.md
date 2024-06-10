@@ -4,7 +4,7 @@ This graph shows how the total supply of a token is distributed among the token 
 
 # Graph
 
-![distributionByHoldingPercentage](../../graphs/distribution-by-holding-percentage.png)
+![distributionByHoldingPercentage](distribution-by-holding-percentage.png)
 
 # Relevance
 
@@ -25,48 +25,48 @@ This query calculates the distribution of token holdings by categorizing address
 Price CTE calculates the average price of the specified token and retrieves its symbol and decimals
 
 ```sql
-  price as (
-    select
-      symbol,
-      decimals,
-      avg(token_price_usd) as price
-    from
-      dex.prices_latest,
-      tokens.erc20
-    where
-      token_address = {{Token Contract Address}}
-      and contract_address = {{Token Contract Address}}
-      and blockchain = '{{Blockchain}}'
-    group by
-      1,
-      2
-  )
+price AS (
+    SELECT
+        symbol,
+        decimals,
+        AVG(token_price_usd) AS price
+    FROM
+        dex.prices_latest,
+        tokens.erc20
+    WHERE
+        token_address = {{Token Contract Address}}
+        AND contract_address = {{Token Contract Address}}
+        AND blockchain = '{{Blockchain}}'
+    GROUP BY
+        symbol,
+        decimals
+)
 ```
 
 Raw CTE calculates the net amount of tokens held by each address by summing up incoming and outgoing transfers
 
 ```sql
-raw as (
-    select
-      "from" as address,
-      sum(cast(value as double) * -1) as amount
-    from
-      erc20_{{Blockchain}}.evt_Transfer
-    where
-      contract_address = {{Token Contract Address}}
-    group by
-      1
-    union all
-    select
-      "to" as address,
-      sum(cast(value as double)) as amount
-    from
-      erc20_{{Blockchain}}.evt_Transfer
-    where
-      contract_address = {{Token Contract Address}}
-    group by
-      1
-  )
+raw AS (
+    SELECT
+        "from" AS address,
+        SUM(CAST(value AS DOUBLE) * -1) AS amount
+    FROM
+        erc20_{{Blockchain}}.evt_Transfer
+    WHERE
+        contract_address = {{Token Contract Address}}
+    GROUP BY
+        "from"
+    UNION ALL
+    SELECT
+        "to" AS address,
+        SUM(CAST(value AS DOUBLE)) AS amount
+    FROM
+        erc20_{{Blockchain}}.evt_Transfer
+    WHERE
+        contract_address = {{Token Contract Address}}
+    GROUP BY
+        "to"
+)
 ```
 
 Finally categorizes addresses based on their percentage holdings, counts the number of addresses in each category, and sums their total holdings.
@@ -78,59 +78,53 @@ Finally categorizes addresses based on their percentage holdings, counts the num
 - Groups by the holding percentage category.
 
 ```sql
-select
-  case
-    when percent_holdings >= 0.5 then 'H) Holdings >=50%'
-    when percent_holdings >= 0.4
-    and percent_holdings < 0.5 then 'G) Holdings >=40% & <50%'
-    when percent_holdings >= 0.3
-    and percent_holdings < 0.4 then 'F) Holdings >=30% & <40%'
-    when percent_holdings >= 0.2
-    and percent_holdings < 0.3 then 'E) Holdings >=20% & <30%'
-    when percent_holdings >= 0.1
-    and percent_holdings < 0.2 then 'D) Holdings >=10% & <20%'
-    when percent_holdings >= 0.05
-    and percent_holdings < 0.1 then 'C) Holdings >=5% & <10%'
-    when percent_holdings >= 0.01
-    and percent_holdings < 0.05 then 'B) Holdings >=1% & <5%'
-    when percent_holdings < 0.01 then 'A) Holdings <1%'
-  end as distribution,
-  count(distinct address) as address_count,
-  sum(holding) as total_holding
-from
-  (
-    select
-      address,
-      sum(amount / power(10, decimals)) as holding,
-      sum(amount * price / power(10, decimals)) as holding_usd,
-      sum(amount) / (
-        select
-          sum(amount)
-        from
-          raw
-        where
-          address not in (
-            0x0000000000000000000000000000000000000000,
-            0x000000000000000000000000000000000000dEaD,
-            0xD15a672319Cf0352560eE76d9e89eAB0889046D3
-          )
-      ) as percent_holdings
-    from
-      price,
-      raw
-    where
-      address not in (
-        0x0000000000000000000000000000000000000000,
-        0x000000000000000000000000000000000000dEaD,
-        0xD15a672319Cf0352560eE76d9e89eAB0889046D3
-      )
-    group by
-      1
-  ) a
-where
-  holding_usd > 1
-group by
-  1
+SELECT
+    CASE
+        WHEN percent_holdings >= 0.5 THEN 'H) Holdings >=50%'
+        WHEN percent_holdings >= 0.4 AND percent_holdings < 0.5 THEN 'G) Holdings >=40% & <50%'
+        WHEN percent_holdings >= 0.3 AND percent_holdings < 0.4 THEN 'F) Holdings >=30% & <40%'
+        WHEN percent_holdings >= 0.2 AND percent_holdings < 0.3 THEN 'E) Holdings >=20% & <30%'
+        WHEN percent_holdings >= 0.1 AND percent_holdings < 0.2 THEN 'D) Holdings >=10% & <20%'
+        WHEN percent_holdings >= 0.05 AND percent_holdings < 0.1 THEN 'C) Holdings >=5% & <10%'
+        WHEN percent_holdings >= 0.01 AND percent_holdings < 0.05 THEN 'B) Holdings >=1% & <5%'
+        WHEN percent_holdings < 0.01 THEN 'A) Holdings <1%'
+    END AS distribution,
+    COUNT(DISTINCT address) AS address_count,
+    SUM(holding) AS total_holding
+FROM
+    (
+        SELECT
+            address,
+            SUM(amount / POWER(10, decimals)) AS holding,
+            SUM(amount * price / POWER(10, decimals)) AS holding_usd,
+            SUM(amount) / (
+                SELECT
+                    SUM(amount)
+                FROM
+                    raw
+                WHERE
+                    address NOT IN (
+                        0x0000000000000000000000000000000000000000,
+                        0x000000000000000000000000000000000000dEaD,
+                        0xD15a672319Cf0352560eE76d9e89eAB0889046D3
+                    )
+            ) AS percent_holdings
+        FROM
+            price,
+            raw
+        WHERE
+            address NOT IN (
+                0x0000000000000000000000000000000000000000,
+                0x000000000000000000000000000000000000dEaD,
+                0xD15a672319Cf0352560eE76d9e89eAB0889046D3
+            )
+        GROUP BY
+            address
+    ) a
+WHERE
+    holding_usd > 1
+GROUP BY
+    distribution;
 ```
 
 ## Tables used

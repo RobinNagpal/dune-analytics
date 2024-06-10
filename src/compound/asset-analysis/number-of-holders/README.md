@@ -5,8 +5,8 @@ The graph for number of holders over time displays the total number of unique ad
 
 # Graph
 
-![totalNumberOfHolders](../../graphs/total-number-of-holders.png)
-![numberOfHoldersOverTime](../../graphs/number-of-holders-over-time.png)
+![totalNumberOfHolders](total-number-of-holders.png)
+![numberOfHoldersOverTime](number-of-holders-over-time.png)
 
 # Relevance
 
@@ -37,8 +37,8 @@ Holding CTE calculates the total amount of tokens received and sent by each addr
 
 ```sql
 holdings AS (
-    SELECT
-        DISTINCT address,
+    SELECT DISTINCT
+        address,
         holding,
         {{token_address}} AS token_address
     FROM (
@@ -47,34 +47,42 @@ holdings AS (
             address
         FROM (
             SELECT
-                SUM(CAST(value ASevt_block_time DOUBLE) / POW(10, b.decimals)) AS total,
-                to AS address
-            FROM erc20_{{chain}}.evt_Transfer a
-            JOIN tokens.erc20 b ON a.contract_address = b.contract_address
-            WHERE a.contract_address = {{token_address}}
-            GROUP BY 2
-
+                SUM(CAST(value AS DOUBLE) / POW(10, b.decimals)) AS total,
+                "to" AS address
+            FROM
+                erc20_{{chain}}.evt_Transfer a
+                JOIN tokens.erc20 b ON a.contract_address = b.contract_address
+            WHERE
+                a.contract_address = {{token_address}}
+            GROUP BY
+                "to"
             UNION ALL
-
             SELECT
                 -SUM(CAST(value AS DOUBLE) / POW(10, b.decimals)) AS total,
                 "from" AS address
-            FROM erc20_{{chain}}.evt_Transfer a
-            JOIN tokens.erc20 b ON a.contract_address = b.contract_address
-            WHERE a.contract_address = {{token_address}}
-            GROUP BY 2
+            FROM
+                erc20_{{chain}}.evt_Transfer a
+                JOIN tokens.erc20 b ON a.contract_address = b.contract_address
+            WHERE
+                a.contract_address = {{token_address}}
+            GROUP BY
+                "from"
         ) t
-        GROUP BY address
+        GROUP BY
+            address
     ) t
-    WHERE holding >= 1
+    WHERE
+        holding >= 1
 )
 ```
 
 Finally counts the number of unique addresses.
 
 ```sql
-SELECT COUNT(DISTINCT address) AS total_number_of_holders
-FROM holdings;
+SELECT
+    COUNT(DISTINCT address) AS total_number_of_holders
+FROM
+    holdings;
 ```
 
 ### Tables used
@@ -97,17 +105,18 @@ Daily Holdings CTE calculates the daily balance of tokens received by each addre
 
 ```sql
 daily_holdings AS (
-SELECT
-    DATE_TRUNC('day', evt_block_time) AS day,
-    "to" AS address,
-    SUM(CAST(value AS DOUBLE) / POW(10, b.decimals)) AS balance
-FROM
-    erc20_{{chain}}.evt_Transfer a
-    JOIN tokens.erc20 b ON a.contract_address = b.contract_address
-WHERE
-    a.contract_address = {{token_address}}
-GROUP BY
-    1, 2
+    SELECT
+        DATE_TRUNC('day', evt_block_time) AS day,
+        "to" AS address,
+        SUM(CAST(value AS DOUBLE) / POW(10, b.decimals)) AS balance
+    FROM
+        erc20_{{chain}}.evt_Transfer a
+        JOIN tokens.erc20 b ON a.contract_address = b.contract_address
+    WHERE
+        a.contract_address = {{token_address}}
+    GROUP BY
+        day,
+        address
 )
 ```
 
@@ -122,7 +131,8 @@ daily_balances AS (
             PARTITION BY address
             ORDER BY day
         ) AS cumulative_balance
-    FROM daily_holdings
+    FROM
+        daily_holdings
 )
 ```
 
@@ -134,8 +144,10 @@ filtered_balances AS (
         day,
         address,
         cumulative_balance
-    FROM daily_balances
-    WHERE cumulative_balance > 0
+    FROM
+        daily_balances
+    WHERE
+        cumulative_balance > 0
 )
 ```
 
@@ -144,8 +156,11 @@ Finally counts the number of unique addresses. Selects distinct combinations of 
 
 ```sql
 distinct_holders AS (
-    SELECT DISTINCT day, address
-    FROM filtered_balances
+    SELECT DISTINCT
+        day,
+        address
+    FROM
+        filtered_balances
 )
 ```
 
@@ -153,9 +168,13 @@ First Seen CTE finds the first day each address held tokens. Groups by address a
 
 ```sql
 first_seen AS (
-    SELECT address, MIN(day) AS first_seen_day
-    FROM distinct_holders
-    GROUP BY address
+    SELECT
+        address,
+        MIN(day) AS first_seen_day
+    FROM
+        distinct_holders
+    GROUP BY
+        address
 )
 ```
 
@@ -163,9 +182,13 @@ Holders per day CTE counts the number of new holders each day. Groups by the fir
 
 ```sql
 holders_per_day AS (
-    SELECT first_seen_day AS day, COUNT(*) AS new_holders
-    FROM first_seen
-    GROUP BY first_seen_day
+    SELECT
+        first_seen_day AS day,
+        COUNT(*) AS new_holders
+    FROM
+        first_seen
+    GROUP BY
+        first_seen_day
 )
 ```
 
@@ -179,7 +202,8 @@ cumulative_holders AS (
             ORDER BY day
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
         ) AS cumulative_number_of_holders
-    FROM holders_per_day
+    FROM
+        holders_per_day
 )
 ```
 
@@ -189,8 +213,10 @@ Finally outputs the cumulative number of holders for each day ordered by days.
 SELECT
     day,
     cumulative_number_of_holders
-FROM cumulative_holders
-ORDER BY day;
+FROM
+    cumulative_holders
+ORDER BY
+    day;
 ```
 
 ### Tables used
