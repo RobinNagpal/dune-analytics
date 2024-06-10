@@ -4,7 +4,7 @@ The graph shows participation of different entities in the market and how much p
 
 # Graph
 
-![distributionByAddressType](../../graphs/distribution-by-address-type.png)
+![distributionByAddressType](distribution-by-address-type.png)
 
 # Relevance
 
@@ -23,44 +23,67 @@ This query calculates the distribution of token holdings by categorizing address
 Price CTE calculates the average price of the specified token and retrieves its symbol and decimals
 
 ```sql
-price as (
-select symbol , decimals, avg(token_price_usd) as price
-from dex.prices_latest,tokens.erc20
-where token_address = {{Token Contract Address}}
-and contract_address = {{Token Contract Address}}
-and blockchain = '{{Blockchain}}'
-group by 1,2
+price AS (
+    SELECT
+        symbol,
+        decimals,
+        AVG(token_price_usd) AS price
+    FROM
+        dex.prices_latest,
+        tokens.erc20
+    WHERE
+        token_address = {{Token Contract Address}}
+        AND contract_address = {{Token Contract Address}}
+        AND blockchain = '{{Blockchain}}'
+    GROUP BY
+        symbol,
+        decimals
 )
 ```
 
 Raw CTE calculates the net amount of tokens held by each address by summing up incoming and outgoing transfers
 
 ```sql
-raw as (
-select "from" as address, sum(cast(value as double)*-1) as amount
-from
-erc20_{{Blockchain}}.evt_Transfer
-where contract_address = {{Token Contract Address}}
-group by 1
-union all
-select "to" as address, sum(cast(value as double)) as amount
-from erc20_{{Blockchain}}.evt_Transfer
-where contract_address = {{Token Contract Address}}
-group by 1)
+raw AS (
+    SELECT
+        "from" AS address,
+        SUM(CAST(value AS DOUBLE) * -1) AS amount
+    FROM
+        erc20_{{Blockchain}}.evt_Transfer
+    WHERE
+        contract_address = {{Token Contract Address}}
+    GROUP BY
+        "from"
+    UNION ALL
+    SELECT
+        "to" AS address,
+        SUM(CAST(value AS DOUBLE)) AS amount
+    FROM
+        erc20_{{Blockchain}}.evt_Transfer
+    WHERE
+        contract_address = {{Token Contract Address}}
+    GROUP BY
+        "to"
+)
 ```
 
 Fund_address CTE creates a list of addresses corresponding to specific funds
 
 ```sql
-fund_address as (
-select address
-FROM (
-VALUES
-(0x820fb25352bb0c5e03e07afc1d86252ffd2f0a18, 'Paradigm'),
-(0x0716a17fbaee714f1e6ab0f9d59edbc5f09815c0, 'Jump Trading')
-) AS t(address,name)
-union all
-select distinct address from labels.funds
+fund_address AS (
+    SELECT
+        address
+    FROM
+        (
+            VALUES
+                (0x820fb25352bb0c5e03e07afc1d86252ffd2f0a18, 'Paradigm'),
+                (0x0716a17fbaee714f1e6ab0f9d59edbc5f09815c0, 'Jump Trading')
+        ) AS t (address, name)
+    UNION ALL
+    SELECT DISTINCT
+        address
+    FROM
+        labels.funds
 )
 ```
 
@@ -81,41 +104,55 @@ Aggregates the total holdings by address type.
 SELECT
     type,
     SUM(amount) AS total_holdings
-FROM (
-    SELECT
-        address,
-        CASE
-            WHEN address IN (SELECT DISTINCT address FROM cex_evms.addresses) OR
-                 address IN (SELECT DISTINCT address FROM query_2296923)
-                THEN 'CEX'
-            WHEN address IN (SELECT DISTINCT project_contract_address FROM dex.trades)
-                THEN 'DEX'
-            WHEN address IN (SELECT DISTINCT address FROM safe.safes_all)
-                THEN 'Multi-Sig Wallet'
-            WHEN address IN (SELECT DISTINCT address FROM {{Blockchain}}.creation_traces) AND
-                 address NOT IN (SELECT DISTINCT project_contract_address FROM dex.trades) AND
-                 address NOT IN (SELECT DISTINCT address FROM safe.safes_all) AND
-                 address NOT IN (SELECT DISTINCT address FROM fund_address)
-                THEN 'Other Smart Contracts'
-            WHEN address IN (SELECT DISTINCT address FROM fund_address)
-                THEN 'VCs/Fund'
-            ELSE 'Individual Address'
-        END AS type,
-        SUM(amount / POWER(10, decimals)) AS amount,
-        SUM(amount * price / POWER(10, decimals)) AS value
-    FROM 
-        price,
-        raw
-    WHERE 
-        address <> 0x0000000000000000000000000000000000000000
-    GROUP BY 
-        address, type
-) AS a
-WHERE 
+FROM
+    (
+        SELECT
+            address,
+            CASE
+                WHEN address IN (
+                    SELECT DISTINCT address FROM cex_evms.addresses
+                )
+                OR address IN (
+                    SELECT DISTINCT address FROM query_2296923
+                ) THEN 'CEX'
+                WHEN address IN (
+                    SELECT DISTINCT project_contract_address FROM dex.trades
+                ) THEN 'DEX'
+                WHEN address IN (
+                    SELECT DISTINCT address FROM safe.safes_all
+                ) THEN 'Multi-Sig Wallet'
+                WHEN address IN (
+                    SELECT DISTINCT address FROM {{Blockchain}}.creation_traces
+                )
+                AND address NOT IN (
+                    SELECT DISTINCT project_contract_address FROM dex.trades
+                )
+                AND address NOT IN (
+                    SELECT DISTINCT address FROM safe.safes_all
+                )
+                AND address NOT IN (
+                    SELECT DISTINCT address FROM fund_address
+                ) THEN 'Other Smart Contracts'
+                WHEN address IN (
+                    SELECT DISTINCT address FROM fund_address
+                ) THEN 'VCs/Fund'
+                ELSE 'Individual Address'
+            END AS type,
+            SUM(amount / POWER(10, decimals)) AS amount,
+            SUM(amount * price / POWER(10, decimals)) AS value
+        FROM
+            price,
+            raw
+        WHERE
+            address <> 0x0000000000000000000000000000000000000000
+        GROUP BY
+            address,
+            type
+    ) a
+WHERE
     value > 1
-GROUP BY 
+GROUP BY
     type;
-
 ```
 
 ## Tables used
@@ -123,7 +160,7 @@ GROUP BY
 - dex.prices_latest
 - tokens.erc20
 - erc20\_{{Blockchain}}.evt_Transfer
-- labels.funds
+- labels.funds (Curated dataset contains known funds addresses across chains. Made by @soispoke)
 - cex_evms.addresses
 - query_2296923 (contains exchanges and their addresses)
 - dex.trades
