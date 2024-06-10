@@ -87,11 +87,11 @@ FROM
 
 ### Tables used
 
-- erc20\_{{Blockchain}}.evt_Transfer
+- erc20\_{{Blockchain}}.evt_Transfer (Curated dataset of erc20 tokens' transactions. Origin unknown)
 
 ### Alternative Choices
 
-- {{Blockchain}}.transactions
+- {{Blockchain}}.transactions (Raw data of a chain containing all kinds of transactions)
 
 ## number of holders over time
 
@@ -221,8 +221,8 @@ ORDER BY
 
 ### Tables used
 
-- erc20\_{{Blockchain}}.evt_Transfer
+- erc20\_{{Blockchain}}.evt_Transfer (Curated dataset of erc20 tokens' transactions. Origin unknown)
 
 ### Alternative Choices
 
-- {{Blockchain}}.transactions
+- {{Blockchain}}.transactions (Raw data of a chain containing all kinds of transactions)
