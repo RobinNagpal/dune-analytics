@@ -78,31 +78,44 @@ Filters out addresses with a value of less than 1.
 Aggregates the total holdings by address type.
 
 ```sql
-select
-type,
-sum(amount) as total_holdings from (
-select
-address,
-case
-when address in (select distinct address from cex_evms.addresses)
-or address in (select distinct address from query_2296923)
-then 'CEX'
-when address in (select distinct project_contract_address from dex.trades) then 'DEX'
-when address in (select distinct address from safe.safes_all) then 'Multi-Sig Wallet'
-when address in (select distinct address from {{Blockchain}}.creation_traces)
-and address not in (select distinct project_contract_address from dex.trades)
-and address not in (select distinct address from safe.safes_all)
-and address not in (select distinct address from fund_address) then 'Other Smart Contracts'
-when address in (select distinct address from fund_address) then 'VCs/Fund'
-else 'Individual Address'
-end as type,
-sum(amount/power(10,decimals)) as amount,
-sum(amount*price/power(10,decimals)) as value
-from price, raw
-where address <> 0x0000000000000000000000000000000000000000
-group by 1,2)a
-where value>1
-group by 1
+SELECT
+    type,
+    SUM(amount) AS total_holdings
+FROM (
+    SELECT
+        address,
+        CASE
+            WHEN address IN (SELECT DISTINCT address FROM cex_evms.addresses) OR
+                 address IN (SELECT DISTINCT address FROM query_2296923)
+                THEN 'CEX'
+            WHEN address IN (SELECT DISTINCT project_contract_address FROM dex.trades)
+                THEN 'DEX'
+            WHEN address IN (SELECT DISTINCT address FROM safe.safes_all)
+                THEN 'Multi-Sig Wallet'
+            WHEN address IN (SELECT DISTINCT address FROM {{Blockchain}}.creation_traces) AND
+                 address NOT IN (SELECT DISTINCT project_contract_address FROM dex.trades) AND
+                 address NOT IN (SELECT DISTINCT address FROM safe.safes_all) AND
+                 address NOT IN (SELECT DISTINCT address FROM fund_address)
+                THEN 'Other Smart Contracts'
+            WHEN address IN (SELECT DISTINCT address FROM fund_address)
+                THEN 'VCs/Fund'
+            ELSE 'Individual Address'
+        END AS type,
+        SUM(amount / POWER(10, decimals)) AS amount,
+        SUM(amount * price / POWER(10, decimals)) AS value
+    FROM 
+        price,
+        raw
+    WHERE 
+        address <> 0x0000000000000000000000000000000000000000
+    GROUP BY 
+        address, type
+) AS a
+WHERE 
+    value > 1
+GROUP BY 
+    type;
+
 ```
 
 ## Tables used
