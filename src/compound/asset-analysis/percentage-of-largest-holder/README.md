@@ -4,7 +4,7 @@ This shows percentage holding of the largest holder of the given token which sig
 
 # Graph
 
-![assetInfo](asset-info.png)
+![percentageOfLargestHolder](percentage-of-largest-holder.png)
 
 # Relevance
 

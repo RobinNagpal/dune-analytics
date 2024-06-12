@@ -161,7 +161,7 @@ GROUP BY
 - tokens.erc20 (Curated dataset for erc20 tokens with addresses, symbols and decimals. Origin unknown)
 - erc20\_{{Blockchain}}.evt_Transfer (Curated dataset of erc20 tokens' transactions. Origin unknown)
 - labels.funds (Curated dataset contains labels of known funds addresses across chains. Made by @soispoke. Present in the spellbook of dune analytics [Spellbook-Labels-Funds](https://github.com/duneanalytics/spellbook/blob/main/models/labels/addresses/institution/identifier/funds/labels_funds.sql))
-- cex_evms.addresses (Curated dataset with centralized exchange names and addresses. Origin unknown)
+- cex_evms.addresses (Curated dataset contains all CEX-tied addresses identified across EVM chains. Present in the spellbook of dune analytics [Spellbook-CEX](https://github.com/duneanalytics/spellbook/blob/main/models/cex/cex_evms_addresses.sql))
 - query_2296923 (returns table with exchange names and their addresses. Uses hardcoded values union with `dune_upload.okx_por_evm` table. [Query-2296923](https://dune.com/queries/2296923))
 - dex.trades (Curated dataset contains DEX trade info like taker and maker. Present in spellbook of dune analytics [Spellbook-Dex-Trades](https://github.com/duneanalytics/spellbook/blob/main/models/_sector/dex/trades/dex_trades.sql))
 - safe.safes_all (Curated dataset that lists all Safes across chains. Present in the spellbook of dune analytics [Spellbook-Safe-SafesAll](https://github.com/duneanalytics/spellbook/blob/main/models/safe/safe_safes_all.sql))
