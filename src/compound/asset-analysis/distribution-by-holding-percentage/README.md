@@ -134,3 +134,10 @@ GROUP BY
 - erc20\_{{Blockchain}}.evt_Transfer (Curated dataset of erc20 tokens' transactions. Origin unknown)
 
 ## Alternative Choices
+
+
+## TODO
+- The holding categories should be expressed in $ amount. The ranges we can have are
+- 0 - $30, $30 - $100, $100 - $300, $300 - $100, $1000 - $3,000, $3000 - $10,000, $10000 - $30,000 , $30,000 - $100,000, 100K-300K, 300K - 1MM, 1MM+  (This is the number of addresses as bar charts)
+
+- 0 - $30, $30 - $100, $100 - $300, $300 - $100, $1000 - $3,000, $3000 - $10,000, $10000 - $30,000 , $30,000 - $100,000, 100K-300K, 300K - 1MM, 1MM+ (% of the circulating supply in a pie chart)
