@@ -50,6 +50,11 @@ supply AS (
   )
 ```
 
+**Hardcoded addresses**
+* 0x0000000000000000000000000000000000000000
+* 0x000000000000000000000000000000000000dEaD
+* 0xD15a672319Cf0352560eE76d9e89eAB0889046D3
+
 Finally calculates the market capitalization and circulating supply of the token. Market cap by multiplying the total amount of tokens by the average token price and circulating supply by converting the raw token amounts from the smallest unit to a readable format by adjusting for decimal places.
 
 ```sql
@@ -77,6 +82,16 @@ GROUP BY
 
 
 ## TODO
+Whenever we have hardcoded addresses or any other hardcoded information, please explain each hardcoded information. Here we have the following hardcoded addresses
+```
+("from" = 0x0000000000000000000000000000000000000000 OR
+      "to" IN (0x0000000000000000000000000000000000000000, 0x000000000000000000000000000000000000dEaD, 0xD15a672319Cf0352560eE76d9e89eAB0889046D3))
+  )
+```
+Please explain each of these
+
+
+
 We should try to display some of the missing fields from below
 ![image](https://github.com/RobinNagpal/dune-analytics/assets/745748/16eb1f92-8fce-46a5-b351-7dda74b4421a)
 
