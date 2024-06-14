@@ -129,8 +129,8 @@ GROUP BY
 
 ## Tables used
 
-- dex.prices_latest
-- tokens.erc20
-- erc20\_{{Blockchain}}.evt_Transfer
+- dex.prices_latest (Curated dataset contains token addresses and their USD price. Made by @bernat. Present in the spellbook of dune analytics [Spellbook-Dex-PricesLatest](https://github.com/duneanalytics/spellbook/blob/main/models/dex/dex_prices_latest.sql))
+- tokens.erc20 (Curated dataset for erc20 tokens with addresses, symbols and decimals. Origin unknown)
+- erc20\_{{Blockchain}}.evt_Transfer (Curated dataset of erc20 tokens' transactions. Origin unknown)
 
 ## Alternative Choices
