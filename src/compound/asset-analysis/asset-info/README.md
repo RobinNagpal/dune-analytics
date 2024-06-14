@@ -73,3 +73,17 @@ GROUP BY
 - erc20\_{{Blockchain}}.evt_Transfer (Curated dataset of erc20 tokens' transactions. Origin unknown)
 
 ## Alternative Choices
+
+
+
+## TODO
+We should try to display some of the missing fields from below
+![image](https://github.com/RobinNagpal/dune-analytics/assets/745748/16eb1f92-8fce-46a5-b351-7dda74b4421a)
+
+
+We should also show last three month price compared with ETH. So plot both, the asset price and also the ETH price on the same chart
+![image](https://github.com/RobinNagpal/dune-analytics/assets/745748/7d0a8b19-c020-4950-87a9-5100adf7e45d)
+
+We should also try to get some information about the presence of these assets on some of the exchanges also. This is imporant becuase, usually after liquidation, the liquidator uses one of these exchange
+![image](https://github.com/RobinNagpal/dune-analytics/assets/745748/7941a1e6-657c-4877-8386-0461e88fc545)
+
