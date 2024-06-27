@@ -95,7 +95,7 @@ token_distribution AS (
   )
 ```
 
-DEX CEX addresses CTE retrieves a list of known centralized and decentralized exchange addresses for the given blockchain.
+DEX CEX addresses CTE retrieves a list of known centralized and decentralized exchange addresses for the given blockchain. DEX addresses comes from two tables as `dex.addresses` doesnt have all the DEX addresses so union them with addresses from `dex.trades`.
 
 ```sql
 dex_cex_addresses AS (
@@ -107,11 +107,27 @@ dex_cex_addresses AS (
       blockchain = '{{chain}}'
     UNION ALL
     SELECT
-      CAST(address as Varchar) AS address
+      address
     FROM
-      dex.addresses
-    WHERE
-      blockchain = '{{chain}}'
+      (
+        SELECT
+          CAST(address as Varchar) AS address
+        FROM
+          dex.addresses
+        WHERE
+          blockchain = '{{chain}}'
+        GROUP BY
+          1
+        UNION ALL
+        SELECT
+          CAST(project_contract_address as Varchar) AS address
+        FROM
+          dex.trades
+        WHERE
+          blockchain = '{{chain}}'
+        GROUP BY
+          1
+      )
   )
 ```
 
@@ -326,6 +342,7 @@ ORDER BY
 - tokens.erc20 (Curated dataset for erc20 tokens with addresses, symbols and decimals. Origin unknown)
 - erc20\_{{Blockchain}}.evt_Transfer (Curated dataset of erc20 tokens' transactions. Origin unknown)
 - dex.addresses (Curated dataset contains known decentralised exchange addresses. Made by @rantum. Present in the spellbook of dune analytics [Spellbook-CEX](https://github.com/duneanalytics/spellbook/blob/main/models/dex/dex_schema.yml))
+- dex.trades (Curated dataset contains DEX trade info like taker and maker. Present in spellbook of dune analytics [Spellbook-Dex-Trades](https://github.com/duneanalytics/spellbook/blob/main/models/_sector/dex/trades/dex_trades.sql))
 - cex.addresses (Curated dataset contains all CEX-tied addresses identified. Made by @hildobby. Present in the spellbook of dune analytics [Spellbook-CEX](https://github.com/duneanalytics/spellbook/blob/main/models/cex/cex_addresses.sql))
 
 ## Alternative Choices

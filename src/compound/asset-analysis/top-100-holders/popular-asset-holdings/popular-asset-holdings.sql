@@ -74,11 +74,27 @@ WITH
       blockchain = '{{chain}}'
     UNION ALL
     SELECT
-      CAST(address as Varchar) AS address
+      address
     FROM
-      dex.addresses
-    WHERE
-      blockchain = '{{chain}}'
+      (
+        SELECT
+          CAST(address as Varchar) AS address
+        FROM
+          dex.addresses
+        WHERE
+          blockchain = '{{chain}}'
+        GROUP BY
+          1
+        UNION ALL
+        SELECT
+          CAST(project_contract_address as Varchar) AS address
+        FROM
+          dex.trades
+        WHERE
+          blockchain = '{{chain}}'
+        GROUP BY
+          1
+      )
   ),
   top_100_token_holders AS (
     SELECT
