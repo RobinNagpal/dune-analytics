@@ -14,24 +14,22 @@ Market cap is crucial for assessing the size, growth, and market share of a toke
 
 This query gets the token symbol, its market current price in USD, calculates the market capitalization and total supply in the market.
 
-Dex Price CTE retrieves the average USD price of the token from a decentralized exchange (DEX) price data source.
+Dex Price CTE retrieves the latest USD price of the token from a latest price data source.
 
 ```sql
 dex_price AS (
     SELECT
       symbol AS dex_symbol,
       decimals AS dex_decimals,
-      AVG(token_price_usd) AS dex_price
+      price AS dex_price
     FROM
-      dex.prices_latest,
-      tokens.erc20
+      prices.usd_latest
     WHERE
-      token_address = {{token_address}}
-      AND contract_address = {{token_address}}
-      AND blockchain = '{{chain}}'
-    GROUP BY
-      symbol,
-      decimals
+      contract_address = {{token_address}}
+    ORDER BY
+      minute DESC
+    LIMIT
+      1
   )
 ```
 
