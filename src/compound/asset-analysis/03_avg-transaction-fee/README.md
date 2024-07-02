@@ -2,6 +2,9 @@
 
 This shows average transaction fee (in ETH) of the token for the past 24 hours for transaction cost analysis influencing smart contract execution conditions.
 
+# TODO
+It will be useful to show this number over the time. Probably last three months.
+
 # Graph
 
 ![assetInfo](asset-info.png)
