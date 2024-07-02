@@ -14,61 +14,95 @@ Market cap is crucial for assessing the size, growth, and market share of a toke
 
 This query gets the token symbol, its market current price in USD, calculates the market capitalization and total supply in the market.
 
-Dex Price CTE retrieves the average USD price of the token from a decentralized exchange (DEX) price data source.
+Dex Price CTE retrieves the latest USD price of the token from a latest price data source.
 
 ```sql
 dex_price AS (
     SELECT
       symbol AS dex_symbol,
       decimals AS dex_decimals,
-      AVG(token_price_usd) AS dex_price
+      price AS dex_price
     FROM
-      dex.prices_latest,
-      tokens.erc20
+      prices.usd_latest
     WHERE
-      token_address = {{token_address}} AND
-      contract_address = {{token_address}} AND
-      blockchain = '{{chain}}'
-    GROUP BY
-      dex_symbol,
-      dex_decimals
+      contract_address = {{token_address}}
+    ORDER BY
+      minute DESC
+    LIMIT
+      1
   )
 ```
 
-Supply CTE calculates the total amount of tokens that have been transferred
+Minted Supply CTE calculates the total amount of tokens minted by summing up the values of transfers where the from address is 0x0000000000000000000000000000000000000000.
 
 ```sql
-supply AS (
+minted_supply AS (
     SELECT
-      SUM(CAST(value AS DOUBLE)) AS amount
+      SUM(CAST(value AS DOUBLE)) AS minted_amount
     FROM
       erc20_{{chain}}.evt_Transfer
     WHERE
-      contract_address = {{token_address}} AND
-      ("from" = 0x0000000000000000000000000000000000000000 OR
-      "to" IN (0x0000000000000000000000000000000000000000, 0x000000000000000000000000000000000000dEaD, 0xD15a672319Cf0352560eE76d9e89eAB0889046D3))
+      contract_address = {{token_address}}
+      AND "from" = 0x0000000000000000000000000000000000000000
+  )
+```
+
+Burned Supply CTE calculates the total amount of tokens burned by summing up the values of transfers where the to address is 0x0000000000000000000000000000000000000000.
+
+```sql
+burned_supply AS (
+    SELECT
+      SUM(CAST(value AS DOUBLE)) AS burned_amount
+    FROM
+      erc20_{{chain}}.evt_Transfer
+    WHERE
+      contract_address = {{token_address}}
+      AND "to" IN (0x0000000000000000000000000000000000000000)
   )
 ```
 
 **Hardcoded addresses**
-* 0x0000000000000000000000000000000000000000
-* 0x000000000000000000000000000000000000dEaD
-* 0xD15a672319Cf0352560eE76d9e89eAB0889046D3
+- 0x0000000000000000000000000000000000000000: This address is not owned by any user, is often associated with token burn & mint/genesis events and used as a generic null address
+
+Total Supply CTE calculates the total amount of tokens that have been transferred
+
+```sql
+total_supply AS (
+    SELECT
+      (
+        COALESCE(m.minted_amount, 0) - COALESCE(b.burned_amount, 0)
+      ) AS net_supply
+    FROM
+      minted_supply m
+      CROSS JOIN burned_supply b
+  )
+```
+
+This CTE combines data from the dex_price and total_supply tables, selecting the token symbol, decimals, and price from dex_price, along with the net supply from total_supply.
+
+```sql
+aggregated_data AS (
+    SELECT
+      d.dex_symbol AS symbol,
+      d.dex_decimals AS decimals,
+      d.dex_price AS price,
+      t.net_supply
+    FROM
+      dex_price d,
+      total_supply t
+  )
+```
 
 Finally calculates the market capitalization and circulating supply of the token. Market cap by multiplying the total amount of tokens by the average token price and circulating supply by converting the raw token amounts from the smallest unit to a readable format by adjusting for decimal places.
 
 ```sql
 SELECT
-  dex_symbol AS symbol,
-  dex_price AS price,
-  SUM(amount * dex_price / POWER(10, dex_decimals)) AS market_cap,
-  SUM(amount / POWER(10, dex_decimals)) AS circulating_supply
+  symbol,
+  price,
+  net_supply / POWER(10, decimals) AS total_supply,
+  (net_supply / POWER(10, decimals)) * price AS market_cap
 FROM
-  supply,
-  dex_price
-GROUP BY
-  dex_symbol,
-  dex_price;
+  aggregated_data;
 ```
 
 ## Tables used
