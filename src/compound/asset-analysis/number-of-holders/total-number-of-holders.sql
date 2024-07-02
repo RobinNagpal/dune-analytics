@@ -1,42 +1,50 @@
-WITH holdings AS (
-    SELECT DISTINCT
-        address,
-        holding,
-        {{token_address}} AS token_address
-    FROM (
-        SELECT
-            SUM(total) AS holding,
-            address
-        FROM (
-            SELECT
-                SUM(CAST(value AS DOUBLE) / POW(10, b.decimals)) AS total,
-                "to" AS address
-            FROM
-                erc20_{{chain}}.evt_Transfer a
-                JOIN tokens.erc20 b ON a.contract_address = b.contract_address
-            WHERE
-                a.contract_address = {{token_address}}
-            GROUP BY
-                "to"
-            UNION ALL
-            SELECT
-                -SUM(CAST(value AS DOUBLE) / POW(10, b.decimals)) AS total,
-                "from" AS address
-            FROM
-                erc20_{{chain}}.evt_Transfer a
-                JOIN tokens.erc20 b ON a.contract_address = b.contract_address
-            WHERE
-                a.contract_address = {{token_address}}
-            GROUP BY
-                "from"
-        ) t
-        GROUP BY
-            address
-    ) t
-    WHERE
-        holding >= 1
-)
-SELECT
-    COUNT(DISTINCT address) AS total_number_of_holders
-FROM
-    holdings;
+with
+  token_details as (
+    select
+      symbol,
+      decimals
+    from
+      tokens.erc20
+    where
+      contract_address = {{token_address}}
+      and blockchain = '{{chain}}'
+    group by
+      1,
+      2
+  ),
+  raw as (
+    select
+      "from" as address,
+      sum(cast(value as double) * -1) as amount
+    from
+      erc20_{{chain}}.evt_Transfer
+    where
+      contract_address = {{token_address}}
+    group by
+      1
+    union all
+    select
+      "to" as address,
+      sum(cast(value as double)) as amount
+    from
+      erc20_{{chain}}.evt_Transfer
+    where
+      contract_address = {{token_address}}
+    group by
+      1
+  )
+select
+  count(distinct address) as holders
+from
+  (
+    select
+      address,
+      sum(amount / power(10, decimals)) as value
+    from
+      raw,
+      token_details
+    group by
+      1
+  ) a
+where
+  value > 0
