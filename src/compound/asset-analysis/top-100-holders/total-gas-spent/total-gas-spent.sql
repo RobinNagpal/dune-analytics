@@ -2,8 +2,7 @@ WITH
   price AS (
     SELECT
       symbol,
-      decimals,
-      AVG(token_price_usd) AS price
+      decimals
     FROM
       dex.prices_latest,
       tokens.erc20
@@ -18,7 +17,7 @@ WITH
   raw AS (
     SELECT
       CAST("from" AS VARCHAR) AS address,
-      SUM(CAST(value AS DOUBLE) * -1) AS amount
+      SUM(CAST(value AS DOUBLE)) * -1 AS amount
     FROM
       erc20_{{chain}}.evt_Transfer
     WHERE
@@ -36,17 +35,17 @@ WITH
     GROUP BY
       1
   ),
+  total_supply AS (
+    SELECT
+      SUM(amount / POWER(10, decimals)) AS total_supply
+    FROM
+      raw,
+      price
+  ),
   distribution AS (
     SELECT
       address,
-      SUM(amount / POWER(10, decimals)) AS holding,
-      SUM(amount * price / POWER(10, decimals)) AS holding_usd,
-      SUM(amount) / (
-        SELECT
-          SUM(amount)
-        FROM
-          raw
-      ) AS percent_holdings
+      SUM(amount / POWER(10, decimals)) AS holding
     FROM
       price,
       raw
@@ -55,49 +54,49 @@ WITH
   ),
   top_100_holders AS (
     SELECT
-      address,
-      holding,
-      holding_usd,
-      percent_holdings
+      d.address,
+      d.holding
     FROM
-      distribution
+      distribution d
+      CROSS JOIN total_supply ts
     ORDER BY
-      holding DESC
+      d.holding DESC
     LIMIT
       100
   ),
   gas_fees AS (
     SELECT
       address,
-      SUM(CAST(gas_used AS DOUBLE)) AS total_gas_used
-    FROM
-      (
-        SELECT
-          CAST(evt."from" AS VARCHAR) AS address,
-          gas_used
-        FROM
-          erc20_{{chain}}.evt_Transfer evt
-          JOIN {{chain}}.transactions txs ON evt.evt_tx_hash = txs.hash
-        WHERE
-          evt.contract_address = {{token_address}}
-        UNION ALL
-        SELECT
-          CAST(evt."to" AS VARCHAR) AS address,
-          gas_used
-        FROM
-          erc20_{{chain}}.evt_Transfer evt
-          JOIN {{chain}}.transactions txs ON evt.evt_tx_hash = txs.hash
-        WHERE
-          evt.contract_address = {{token_address}}
-      ) gas_tx
+      SUM(total_gas_used) AS total_gas_used
+    FROM (
+      SELECT
+        CAST(evt."from" AS VARCHAR) AS address,
+        SUM(CAST(txs.gas_used AS DOUBLE)) AS total_gas_used
+      FROM
+        erc20_{{chain}}.evt_Transfer evt
+        JOIN {{chain}}.transactions txs ON evt.evt_tx_hash = txs.hash
+      WHERE
+        evt.contract_address = {{token_address}}
+      GROUP BY
+        CAST(evt."from" AS VARCHAR)
+      UNION ALL
+      SELECT
+        CAST(evt."to" AS VARCHAR) AS address,
+        SUM(CAST(txs.gas_used AS DOUBLE)) AS total_gas_used
+      FROM
+        erc20_{{chain}}.evt_Transfer evt
+        JOIN {{chain}}.transactions txs ON evt.evt_tx_hash = txs.hash
+      WHERE
+        evt.contract_address = {{token_address}}
+      GROUP BY
+        CAST(evt."to" AS VARCHAR)
+    ) AS combined
     GROUP BY
       address
   )
 SELECT
   t.address,
   t.holding,
-  t.holding_usd,
-  t.percent_holdings,
   COALESCE(gf.total_gas_used, 0) AS total_gas_used
 FROM
   top_100_holders t

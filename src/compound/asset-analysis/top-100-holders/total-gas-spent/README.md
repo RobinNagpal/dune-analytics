@@ -13,16 +13,15 @@ Understanding the gas expenditure in relation to the token transactions is cruci
 
 # Query Explanation
 
-This query calculates the top 100 token holders by their token holdings, including their token values in USD and their respective percentages of the total supply. It also computes the total gas fees spent by these holders and joins this data for a comprehensive view of the top token holders and their activities.
+This query calculates the top 100 token holders by their token holdings. It also computes the total gas fees spent by these holders and joins this data for a comprehensive view of the top token holders and their activities.
 
-Price CTE calculates the average price of the specified token and retrieves its symbol and decimals
+Token Details CTE retrieves its symbol and decimals
 
 ```sql
-price AS (
+token_details AS (
     SELECT
       symbol,
-      decimals,
-      AVG(token_price_usd) AS price
+      decimals
     FROM
       dex.prices_latest,
       tokens.erc20
@@ -62,20 +61,25 @@ raw AS (
   )
 ```
 
-Distribution CTE calculates the total holdings and the percentage of total supply each address holds.
+Total Supply CTE calculates the total supply of the token by summing up the amounts from the raw CTE
+
+```sql
+total_supply AS (
+    SELECT
+      SUM(amount / POWER(10, decimals)) AS total_supply
+    FROM
+      raw,
+      token_details
+  )
+```
+
+Distribution CTE calculates the total holdings.
 
 ```sql
 distribution AS (
     SELECT
       address,
-      SUM(amount / POWER(10, decimals)) AS holding,
-      SUM(amount * price / POWER(10, decimals)) AS holding_usd,
-      SUM(amount) / (
-        SELECT
-          SUM(amount)
-        FROM
-          raw
-      ) AS percent_holdings
+      SUM(amount / POWER(10, decimals)) AS holding
     FROM
       price,
       raw
@@ -89,14 +93,13 @@ Top 100 holders CTE selects the top 100 addresses by their token holdings.
 ```sql
 top_100_holders AS (
     SELECT
-      address,
-      holding,
-      holding_usd,
-      percent_holdings
+      d.address,
+      d.holding
     FROM
-      distribution
+      distribution d
+      CROSS JOIN total_supply ts
     ORDER BY
-      holding DESC
+      d.holding DESC
     LIMIT
       100
   )
@@ -140,8 +143,6 @@ Finally joins holders and gas fee CTEs to get the address, their holdings and to
 SELECT
   t.address,
   t.holding,
-  t.holding_usd,
-  t.percent_holdings,
   COALESCE(gf.total_gas_used, 0) AS total_gas_used
 FROM
   top_100_holders t
