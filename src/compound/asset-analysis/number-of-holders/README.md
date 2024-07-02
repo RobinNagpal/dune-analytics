@@ -33,60 +33,73 @@ This query calculates the number of unique holders of a given token on a given b
 - Filtering out addresses with net holdings less than 1 token.
 - Counting the number of unique addresses with net holdings of at least 1 token.
 
-Holding CTE calculates the total amount of tokens received and sent by each address. It converts the token value to a human-readable format by dividing it by 10^decimals.
+Token Details retrieves the symbol and decimals of the token with the specified contract address and blockchain
 
 ```sql
-holdings AS (
-    SELECT DISTINCT
-        address,
-        holding,
-        {{token_address}} AS token_address
-    FROM (
-        SELECT
-            SUM(total) AS holding,
-            address
-        FROM (
-            SELECT
-                SUM(CAST(value AS DOUBLE) / POW(10, b.decimals)) AS total,
-                "to" AS address
-            FROM
-                erc20_{{chain}}.evt_Transfer a
-                JOIN tokens.erc20 b ON a.contract_address = b.contract_address
-            WHERE
-                a.contract_address = {{token_address}}
-            GROUP BY
-                "to"
-            UNION ALL
-            SELECT
-                -SUM(CAST(value AS DOUBLE) / POW(10, b.decimals)) AS total,
-                "from" AS address
-            FROM
-                erc20_{{chain}}.evt_Transfer a
-                JOIN tokens.erc20 b ON a.contract_address = b.contract_address
-            WHERE
-                a.contract_address = {{token_address}}
-            GROUP BY
-                "from"
-        ) t
-        GROUP BY
-            address
-    ) t
-    WHERE
-        holding >= 1
-)
+token_details as (
+    select
+      symbol,
+      decimals
+    from
+      tokens.erc20
+    where
+      contract_address = {{token_address}}
+      and blockchain = '{{chain}}'
+    group by
+      1,
+      2
+  )
+```
+
+Raw CTE aggregates the net transfer amounts for each address by summing the transferred values both "from" and "to" the specified token contract address
+
+```sql
+raw as (
+    select
+      "from" as address,
+      sum(cast(value as double) * -1) as amount
+    from
+      erc20_{{chain}}.evt_Transfer
+    where
+      contract_address = {{token_address}}
+    group by
+      1
+    union all
+    select
+      "to" as address,
+      sum(cast(value as double)) as amount
+    from
+      erc20_{{chain}}.evt_Transfer
+    where
+      contract_address = {{token_address}}
+    group by
+      1
+  )
 ```
 
 Finally counts the number of unique addresses.
 
 ```sql
-SELECT
-    COUNT(DISTINCT address) AS total_number_of_holders
-FROM
-    holdings;
+select
+  count(distinct address) as holders
+from
+  (
+    select
+      address,
+      sum(amount / power(10, decimals)) as value
+    from
+      raw,
+      token_details
+    group by
+      1
+  ) a
+where
+  value > 0
 ```
 
 ### Tables used
 
+- tokens.erc20 (Curated dataset for erc20 tokens with addresses, symbols and decimals. Origin unknown)
 - erc20\_{{Blockchain}}.evt_Transfer (Curated dataset of erc20 tokens' transactions. Origin unknown)
 
 ### Alternative Choices
