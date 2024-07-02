@@ -23,11 +23,9 @@ token_details AS (
       symbol,
       decimals
     FROM
-      dex.prices_latest,
       tokens.erc20
     WHERE
-      token_address = {{token_address}}
-      AND contract_address = {{token_address}}
+      contract_address = {{token_address}}
       AND blockchain = '{{chain}}'
     GROUP BY
       1,
@@ -81,7 +79,7 @@ distribution AS (
       address,
       SUM(amount / POWER(10, decimals)) AS holding
     FROM
-      price,
+      token_details,
       raw
     GROUP BY
       address

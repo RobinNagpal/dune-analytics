@@ -1,14 +1,12 @@
 WITH
-  price AS (
+  token_details AS (
     SELECT
       symbol,
       decimals
     FROM
-      dex.prices_latest,
       tokens.erc20
     WHERE
-      token_address = {{token_address}}
-      AND contract_address = {{token_address}}
+      contract_address = {{token_address}}
       AND blockchain = '{{chain}}'
     GROUP BY
       1,
@@ -40,14 +38,14 @@ WITH
       SUM(amount / POWER(10, decimals)) AS total_supply
     FROM
       raw,
-      price
+      token_details
   ),
   distribution AS (
     SELECT
       address,
       SUM(amount / POWER(10, decimals)) AS holding
     FROM
-      price,
+      token_details,
       raw
     GROUP BY
       address
@@ -68,29 +66,30 @@ WITH
     SELECT
       address,
       SUM(total_gas_used) AS total_gas_used
-    FROM (
-      SELECT
-        CAST(evt."from" AS VARCHAR) AS address,
-        SUM(CAST(txs.gas_used AS DOUBLE)) AS total_gas_used
-      FROM
-        erc20_{{chain}}.evt_Transfer evt
-        JOIN {{chain}}.transactions txs ON evt.evt_tx_hash = txs.hash
-      WHERE
-        evt.contract_address = {{token_address}}
-      GROUP BY
-        CAST(evt."from" AS VARCHAR)
-      UNION ALL
-      SELECT
-        CAST(evt."to" AS VARCHAR) AS address,
-        SUM(CAST(txs.gas_used AS DOUBLE)) AS total_gas_used
-      FROM
-        erc20_{{chain}}.evt_Transfer evt
-        JOIN {{chain}}.transactions txs ON evt.evt_tx_hash = txs.hash
-      WHERE
-        evt.contract_address = {{token_address}}
-      GROUP BY
-        CAST(evt."to" AS VARCHAR)
-    ) AS combined
+    FROM
+      (
+        SELECT
+          CAST(evt."from" AS VARCHAR) AS address,
+          SUM(CAST(txs.gas_used AS DOUBLE)) AS total_gas_used
+        FROM
+          erc20_{{chain}}.evt_Transfer evt
+          JOIN {{chain}}.transactions txs ON evt.evt_tx_hash = txs.hash
+        WHERE
+          evt.contract_address = {{token_address}}
+        GROUP BY
+          CAST(evt."from" AS VARCHAR)
+        UNION ALL
+        SELECT
+          CAST(evt."to" AS VARCHAR) AS address,
+          SUM(CAST(txs.gas_used AS DOUBLE)) AS total_gas_used
+        FROM
+          erc20_{{chain}}.evt_Transfer evt
+          JOIN {{chain}}.transactions txs ON evt.evt_tx_hash = txs.hash
+        WHERE
+          evt.contract_address = {{token_address}}
+        GROUP BY
+          CAST(evt."to" AS VARCHAR)
+      ) AS combined
     GROUP BY
       address
   )
