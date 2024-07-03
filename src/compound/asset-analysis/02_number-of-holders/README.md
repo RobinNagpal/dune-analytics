@@ -53,14 +53,12 @@ token_details as (
 
 Raw CTE aggregates the net transfer amounts for each address by summing the transferred values both "from" and "to" the specified token contract address
 
-### TODO: Add better name for "raw"
-
 ### Questions
 1. Do we need to include the from also? Can we not just consider the "to"? 
 2. Should we consider $amount also in this case. Like the number of holders with at least $50, $250 worth of tokens? See if it results in better observation. And we draw it on the same chart. 
 
 ```sql
-raw as (
+no_of_tokens as (
     select
       "from" as address,
       sum(cast(value as double) * -1) as amount
@@ -94,7 +92,7 @@ from
       address,
       sum(amount / power(10, decimals)) as value
     from
-      raw,
+      no_of_tokens,
       token_details
     group by
       1
