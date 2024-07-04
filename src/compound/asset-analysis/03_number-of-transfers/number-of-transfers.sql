@@ -12,11 +12,11 @@ WITH
       0x514910771AF9Ca656af840dff83E8264EcF986CA AS token_address,
       'link' AS token_name
   ),
-  transaction_fees AS (
+  transaction_counts AS (
     SELECT
       DATE(evt_block_time) AS day,
       token_name,
-      CAST(txs.gas_used AS BIGINT) * CAST(txs.gas_price AS BIGINT) / POWER(10, 18) AS fee_eth
+      evt.evt_tx_hash
     FROM
       erc20_{{chain}}.evt_Transfer evt
       JOIN {{chain}}.transactions txs ON evt.evt_tx_hash = txs.hash
@@ -24,28 +24,26 @@ WITH
     WHERE
       evt_block_time >= CURRENT_DATE - INTERVAL '{{duration_window_days}}' day
   ),
-  average_fees AS (
+  total_transactions AS (
     SELECT
       day,
       token_name,
-      AVG(fee_eth) AS average_transaction_fee_eth
+      COUNT(evt_tx_hash) AS transaction_count
     FROM
-      transaction_fees
+      transaction_counts
     GROUP BY
       day,
       token_name
   )
 SELECT
   a.day,
-  a.average_transaction_fee_eth AS average_transaction_fee_eth_main,
-  u.average_transaction_fee_eth AS average_transaction_fee_eth_uni,
-  l.average_transaction_fee_eth AS average_transaction_fee_eth_link
+  a.transaction_count AS transaction_count_main,
+  COALESCE(u.transaction_count, 0) AS transaction_count_uni,
+  COALESCE(l.transaction_count, 0) AS transaction_count_link
 FROM
-  average_fees a
-  LEFT JOIN average_fees u ON a.day = u.day
-  AND u.token_name = 'uni'
-  LEFT JOIN average_fees l ON a.day = l.day
-  AND l.token_name = 'link'
+  total_transactions a
+  LEFT JOIN total_transactions u ON a.day = u.day AND u.token_name = 'uni'
+  LEFT JOIN total_transactions l ON a.day = l.day AND l.token_name = 'link'
 WHERE
   a.token_name = 'main_token'
 ORDER BY
