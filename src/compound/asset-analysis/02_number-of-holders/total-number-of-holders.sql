@@ -12,7 +12,7 @@ with
       1,
       2
   ),
-  raw as (
+  no_of_tokens as (
     select
       "from" as address,
       sum(cast(value as double) * -1) as amount
@@ -41,7 +41,7 @@ from
       address,
       sum(amount / power(10, decimals)) as value
     from
-      raw,
+      no_of_tokens,
       token_details
     group by
       1
