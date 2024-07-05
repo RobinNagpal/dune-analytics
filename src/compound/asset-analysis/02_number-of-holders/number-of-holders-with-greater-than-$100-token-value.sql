@@ -221,47 +221,107 @@ WITH
       1,
       2
   ),
-  token_holders_with_balance AS (
+  token_daily_prices AS (
+    SELECT
+      er.decimals,
+      DATE_TRUNC('day', hour) AS day,
+      AVG(dx.median_price) AS price
+    FROM
+      dex.prices dx
+      JOIN tokens.erc20 er ON er.contract_address = {{token_address}}
+    WHERE
+      dx.contract_address = {{token_address}}
+      AND er.blockchain = '{{chain}}'
+    GROUP BY
+      er.decimals,
+      DATE_TRUNC('day', hour)
+  ),
+  uni_daily_prices AS (
+    SELECT
+      er.decimals,
+      DATE_TRUNC('day', hour) AS day,
+      AVG(dx.median_price) AS price
+    FROM
+      dex.prices dx
+      JOIN tokens.erc20 er ON er.contract_address = 0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984
+    WHERE
+      dx.contract_address = 0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984
+      AND er.blockchain = 'ethereum'
+    GROUP BY
+      er.decimals,
+      DATE_TRUNC('day', hour)
+  ),
+  link_daily_prices AS (
+    SELECT
+      er.decimals,
+      DATE_TRUNC('day', hour) AS day,
+      AVG(dx.median_price) AS price
+    FROM
+      dex.prices dx
+      JOIN tokens.erc20 er ON er.contract_address = 0x514910771AF9Ca656af840dff83E8264EcF986CA
+    WHERE
+      dx.contract_address = 0x514910771AF9Ca656af840dff83E8264EcF986CA
+      AND er.blockchain = 'ethereum'
+    GROUP BY
+      er.decimals,
+      DATE_TRUNC('day', hour)
+  ),
+  token_holders_with_token_value AS (
     SELECT
       b.day AS "Date",
-      COUNT(address) AS "Holders with Balance"
+      COUNT(
+        CASE
+          WHEN (balance * p.price / POWER(10, p.decimals)) > 100 THEN address
+        END
+      ) AS "Holders with Token Value > $100"
     FROM
       token_balance_all_days AS b
+      LEFT JOIN token_daily_prices AS p ON b.day = p.day
     WHERE
       balance > 0
     GROUP BY
       b.day
   ),
-  uni_holders_with_balance AS (
+  uni_holders_with_token_value AS (
     SELECT
       b.day AS "Date",
-      COUNT(address) AS "Holders with Balance"
+      COUNT(
+        CASE
+          WHEN (balance * p.price / POWER(10, p.decimals)) > 100 THEN address
+        END
+      ) AS "Holders with Token Value > $100"
     FROM
       uni_balance_all_days AS b
+      LEFT JOIN uni_daily_prices AS p ON b.day = p.day
     WHERE
       balance > 0
     GROUP BY
       b.day
   ),
-  link_holders_with_balance AS (
+  link_holders_with_token_value AS (
     SELECT
       b.day AS "Date",
-      COUNT(address) AS "Holders with Balance"
+      COUNT(
+        CASE
+          WHEN (balance * p.price / POWER(10, p.decimals)) > 100 THEN address
+        END
+      ) AS "Holders with Token Value > $100"
     FROM
       link_balance_all_days AS b
+      LEFT JOIN link_daily_prices AS p ON b.day = p.day
     WHERE
       balance > 0
     GROUP BY
       b.day
   )
 SELECT
-  COALESCE(hwb_token."Date", hwb_uni."Date", hwb_link."Date") AS "Date",
-  COALESCE(hwb_token."Holders with Balance", 0) AS "Token Holders with Balance",
-  COALESCE(hwb_uni."Holders with Balance", 0) AS "UNI Holders with Balance",
-  COALESCE(hwb_link."Holders with Balance", 0) AS "LINK Holders with Balance"
+  COALESCE(htv_token."Date", htv_uni."Date", htv_link."Date") AS "Date",
+  COALESCE(htv_token."Holders with Token Value > $100", 0) AS "Token Holders with Token Value > $100",
+  COALESCE(htv_uni."Holders with Token Value > $100", 0) AS "UNI Holders with Token Value > $100",
+  COALESCE(htv_link."Holders with Token Value > $100", 0) AS "LINK Holders with Token Value > $100"
 FROM
-  token_holders_with_balance hwb_token
-  FULL JOIN uni_holders_with_balance hwb_uni ON hwb_token."Date" = hwb_uni."Date"
-  FULL JOIN link_holders_with_balance hwb_link ON hwb_token."Date" = hwb_link."Date"
+  token_holders_with_token_value htv_token
+  FULL JOIN uni_holders_with_token_value htv_uni ON htv_token."Date" = htv_uni."Date"
+  FULL JOIN link_holders_with_token_value htv_link ON htv_token."Date" = htv_link."Date"
 ORDER BY
-  COALESCE(hwb_token."Date", hwb_uni."Date", hwb_link."Date");
+  COALESCE(htv_token."Date", htv_uni."Date", htv_link."Date");
