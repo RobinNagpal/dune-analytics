@@ -1,16 +1,16 @@
 # About
 
-This shows percentage holding of the largest holder of the given token which signifies to what extent the market is decentralized and reveals the concentration of token ownership, highlighting the dominant stakeholder's influence within the token's ecosystem.
+This query calculates the percentage of total token holdings held by the top 100 largest holders of a given token. This analysis provides insights into the degree of decentralization and the concentration of token ownership, highlighting the influence that top stakeholders have within the token's ecosystem.
 
 # Graph
 
-![percentageOfLargestHolder](percentage-of-largest-holder.png)
+![percentageOfLargestHolder](total-percentage-of-top-100-holder.png)
 
 # Relevance
 
-- Market Influence: The largest holder often has a significant influence over the token's market dynamics. Large sell-offs or purchases by this holder can lead to substantial price fluctuations.
-- Investor Sentiment: Knowledge of a large concentrated holding can affect investor sentiment, as potential investors might be wary of a single entity's control over the token's future movements.
-- Decentralization Assessment: A high percentage held by the largest owner might indicate centralization, which could deter decentralization purists and affect the blockchain's perceived integrity and resilience against attacks or manipulation.
+- Market Influence: The top holders often has a significant influence over the token's market dynamics. Large sell-offs or purchases by this holder can lead to substantial price fluctuations.
+- Investor Sentiment: Knowledge of a large concentrated holding can affect investor sentiment, as potential investors might be wary of the top holder's control over the token's future movements.
+- Decentralization Assessment: A high percentage held by the top 100 holders might indicate centralization, which could deter decentralization purists and affect the blockchain's perceived integrity and resilience against attacks or manipulation.
 
 # Query Explanation
 
@@ -114,59 +114,110 @@ labels AS (
 )
 ```
 
-Finally creates dynamic links to the relevant blockchain explorers and get the address with the largest holding among all the addresses including individual, centralized and decentralized exchanges, fund addresses and smart contracts.
+Finally get the address with the largest holding among all the addresses including individual, centralized and decentralized exchanges, fund addresses and smart contracts.
+
+```sql
+top_100 as (
+    SELECT
+      a.percent_holdings * 100 AS percent_holdings_counter
+    FROM
+      (
+        SELECT
+          address,
+          CASE
+            WHEN CAST(address as VARBINARY) IN (
+              SELECT DISTINCT
+                address
+              FROM
+                labels.cex_ethereum
+            )
+            OR CAST(address as VARBINARY) IN (
+              SELECT DISTINCT
+                address
+              FROM
+                query_2296923
+            ) THEN 'CEX'
+            WHEN CAST(address as VARBINARY) IN (
+              SELECT DISTINCT
+                project_contract_address
+              FROM
+                dex.trades
+            ) THEN 'DEX'
+            WHEN CAST(address as VARBINARY) IN (
+              SELECT DISTINCT
+                address
+              FROM
+                {{chain}}.creation_traces
+            )
+            AND CAST(address as VARBINARY) NOT IN (
+              SELECT DISTINCT
+                project_contract_address
+              FROM
+                dex.trades
+            )
+            AND CAST(address as VARBINARY) NOT IN (
+              SELECT DISTINCT
+                address
+              FROM
+                fund_address
+            ) THEN 'Other Smart Contracts'
+            WHEN CAST(address as VARBINARY) IN (
+              SELECT DISTINCT
+                address
+              FROM
+                fund_address
+            ) THEN 'VCs/Fund'
+            ELSE 'Individual Address'
+          END AS address_type,
+          SUM(amount / POWER(10, decimals)) AS amount,
+          SUM(amount * price / POWER(10, decimals)) AS value,
+          SUM(amount) / (
+            SELECT
+              SUM(amount)
+            FROM
+              raw
+            WHERE
+              address NOT IN (
+                '0x0000000000000000000000000000000000000000',
+                '0x000000000000000000000000000000000000dEaD'
+              )
+          ) AS percent_holdings
+        FROM
+          price,
+          raw
+        WHERE
+          address NOT IN (
+            '0x0000000000000000000000000000000000000000',
+            '0x000000000000000000000000000000000000dEaD'
+          )
+        GROUP BY
+          address
+        ORDER BY
+          value DESC
+        LIMIT
+          100
+      ) a
+      LEFT JOIN labels b ON CAST(a.address AS VARBINARY) = b.address
+    WHERE
+      a.value > 1
+    GROUP BY
+      a.address,
+      a.address_type,
+      a.amount,
+      a.value,
+      a.percent_holdings
+    ORDER BY
+      a.percent_holdings DESC
+  )
+```
+
+Finally calculates the total percentage of token holdings for the top 100 addresses by summing their individual percentage holdings.
 
 ```sql
 SELECT
-    CASE
-        WHEN '{{chain}}' = 'ethereum' THEN CONCAT('<a href="https://etherscan.io/address/', CAST(a.address AS VARCHAR), '" target="_blank">', 'Block Explorer', '</a>')
-        WHEN '{{chain}}' = 'arbitrum' THEN CONCAT('<a href="https://arbiscan.io/address/', CAST(a.address AS VARCHAR), '" target="_blank">', 'Block Explorer', '</a>')
-        WHEN '{{chain}}' = 'polygon' THEN CONCAT('<a href="https://polygonscan.com/address/', CAST(a.address AS VARCHAR), '" target="_blank">', 'Block Explorer', '</a>')
-        WHEN '{{chain}}' = 'avalanche_c' THEN CONCAT('<a href="https://snowtrace.io/address/', CAST(a.address AS VARCHAR), '" target="_blank">', 'Block Explorer', '</a>')
-        WHEN '{{chain}}' = 'bnb' THEN CONCAT('<a href="https://bscscan.com/address/', CAST(a.address AS VARCHAR), '" target="_blank">', 'Block Explorer', '</a>')
-        WHEN '{{chain}}' = 'optimism' THEN CONCAT('<a href="https://optimistic.etherscan.io/address/', CAST(a.address AS VARCHAR), '" target="_blank">', 'Block Explorer', '</a>')
-        WHEN '{{chain}}' = 'fantom' THEN CONCAT('<a href="https://ftmscan.com//address/', CAST(a.address AS VARCHAR), '" target="_blank">', 'Block Explorer', '</a>')
-        WHEN '{{chain}}' = 'base' THEN CONCAT('<a href="https://basescan.org//address/', CAST(a.address AS VARCHAR), '" target="_blank">', 'Block Explorer', '</a>')
-        ELSE CAST(a.address AS VARCHAR)
-    END AS address,
-    ARRAY_AGG(DISTINCT name) AS labels,
-    type,
-    amount,
-    value,
-    percent_holdings,
-    percent_holdings * 100 AS percent_holdings_counter
+  SUM(percent_holdings_counter) AS total_percent_holdings
 FROM
-    (SELECT
-         address,
-         CASE
-             WHEN address IN (SELECT DISTINCT address FROM labels.cex_ethereum) OR address IN (SELECT DISTINCT address FROM query_2296923) THEN 'CEX'
-             WHEN address IN (SELECT DISTINCT project_contract_address FROM dex.trades) THEN 'DEX'
-             WHEN address IN (SELECT DISTINCT address FROM {{chain}}.creation_traces) AND address NOT IN (SELECT DISTINCT project_contract_address FROM dex.trades) AND address NOT IN (SELECT DISTINCT address FROM fund_address) THEN 'Other Smart Contracts'
-             WHEN address IN (SELECT DISTINCT address FROM fund_address) THEN 'VCs/Fund'
-             ELSE 'Individual Address'
-         END AS type,
-         SUM(amount / POWER(10, decimals)) AS amount,
-         SUM(amount * price / POWER(10, decimals)) AS value,
-         SUM(amount) / (SELECT SUM(amount) FROM raw WHERE address NOT IN (0x0000000000000000000000000000000000000000, 0x000000000000000000000000000000000000dEaD, 0xD15a672319Cf0352560eE76d9e89eAB0889046D3)) AS percent_holdings
-     FROM
-         price,
-         raw
-     WHERE
-         address NOT IN (0x0000000000000000000000000000000000000000, 0x000000000000000000000000000000000000dEaD, 0xD15a672319Cf0352560eE76d9e89eAB0889046D3)
-     GROUP BY
-         address, type
-     ORDER BY
-         value DESC
-     LIMIT
-         100
-    ) a
-    LEFT JOIN labels b ON CAST(a.address AS VARBINARY) = b.address
-WHERE
-    value > 1
-GROUP BY
-    address, type, amount, value, percent_holdings
-ORDER BY
-    percent_holdings DESC;
+  top_100;
 ```
 
 ## Tables used
