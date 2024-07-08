@@ -151,7 +151,7 @@ token_symbols AS (
 Combines the symbols of the tokens and returns the desired columns.
 
 ```sql
-SELECT
+SELECT DISTINCT
     project,
     version,
     address AS pool_address,

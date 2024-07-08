@@ -100,7 +100,7 @@ WITH
       JOIN tokens.erc20 t0 ON dth.token0 = t0.contract_address
       JOIN tokens.erc20 t1 ON dth.token1 = t1.contract_address
   )
-SELECT
+SELECT DISTINCT
   project,
   version,
   address AS pool_address,

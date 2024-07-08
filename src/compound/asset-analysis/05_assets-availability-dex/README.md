@@ -150,7 +150,7 @@ This CTE joins the token_distribution CTE with the dex_addresses CTE to get the 
 
 ```sql
 dex_token_holding AS (
-    SELECT
+    SELECT DISTINCT
       td.address,
       da.name,
       td.holding AS token_holding,
