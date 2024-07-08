@@ -1,4 +1,14 @@
 WITH
+  dex_pool_addresses AS (
+    SELECT
+      pool AS address
+    FROM
+      dex.pools
+    WHERE
+      blockchain = '{{chain}}'
+    GROUP BY
+      1
+  ),
   dex_addresses AS (
     SELECT
       CAST(address as Varchar) AS address,
@@ -18,6 +28,12 @@ WITH
       dex.trades
     WHERE
       blockchain = '{{chain}}'
+      AND project_contract_address NOT IN (
+        SELECT
+          address
+        FROM
+          dex_pool_addresses
+      )
     GROUP BY
       1,
       2
@@ -75,7 +91,7 @@ WITH
       address
   ),
   dex_token_holding AS (
-    SELECT
+    SELECT DISTINCT
       td.address,
       da.dex_name,
       td.holding AS token_holding,
@@ -84,7 +100,7 @@ WITH
       token_distribution td
       JOIN dex_addresses da ON td.address = da.address
     WHERE
-      td.holding > 0.0000001
+      td.holding > 0
   )
 SELECT
   *
