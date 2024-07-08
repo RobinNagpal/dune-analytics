@@ -136,7 +136,7 @@ dex_token_holding AS (
       token_distribution td
       JOIN dex_addresses da ON td.address = da.address
     WHERE
-      td.holding > 0
+      td.holding > 0.0000001
   )
 ```
 
