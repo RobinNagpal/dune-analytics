@@ -17,16 +17,33 @@ This table is relevant for understanding the distribution and adoption of a spec
 
 This query calculates the net amount of a specified token held by different DEX addresses on a given blockchain. It aggregates the token transfers to and from DEX addresses and calculates their net holdings and the corresponding USD value.
 
-## All addresses of DEX
+## All Addresses of DEX Pools
 
-This Common Table Expression (CTE) selects the addresses of DEXs from the dex.addresses table and the dex.trades table, casts them to VARCHAR, and assigns them a name.
+This CTE selects distinct pool addresses from the dex.pools table for a specific blockchain.
 
 ```sql
 WITH
-  dex_addresses AS (
+  dex_pool_addresses AS (
+    SELECT
+      pool AS address
+    FROM
+      dex.pools
+    WHERE
+      blockchain = '{{chain}}'
+    GROUP BY
+      1
+  )
+```
+
+## All addresses of DEX
+
+This Common Table Expression (CTE) selects the addresses of DEXs from the dex.addresses table and the dex.trades table excluding any addresses that are in dex pools, casts them to VARCHAR, and assigns them a name.
+
+```sql
+dex_addresses AS (
     SELECT
       CAST(address as Varchar) AS address,
-      dex_name as name
+      dex_name
     FROM
       dex.addresses
     WHERE
@@ -42,10 +59,16 @@ WITH
       dex.trades
     WHERE
       blockchain = '{{chain}}'
+      AND project_contract_address NOT IN (
+        SELECT
+          address
+        FROM
+          dex_pool_addresses
+      )
     GROUP BY
       1,
       2
-  ),
+  )
 ```
 
 ## Price of token 
@@ -127,7 +150,7 @@ This CTE joins the token_distribution CTE with the dex_addresses CTE to get the 
 
 ```sql
 dex_token_holding AS (
-    SELECT
+    SELECT DISTINCT
       td.address,
       da.name,
       td.holding AS token_holding,
@@ -136,7 +159,7 @@ dex_token_holding AS (
       token_distribution td
       JOIN dex_addresses da ON td.address = da.address
     WHERE
-      td.holding > 0.0000001
+      td.holding > 0
   )
 ```
 
