@@ -17,7 +17,7 @@ WITH
   ),
   raw AS (
     SELECT
-      CAST("from" AS VARCHAR) AS address,
+      "from" as address,
       SUM(CAST(value AS DOUBLE) * -1) AS amount
     FROM
       erc20_{{chain}}.evt_Transfer
@@ -27,7 +27,7 @@ WITH
       "from"
     UNION ALL
     SELECT
-      CAST("to" AS VARCHAR) AS address,
+      "to" as address,
       SUM(CAST(value AS DOUBLE)) AS amount
     FROM
       erc20_{{chain}}.evt_Transfer
@@ -111,51 +111,45 @@ WITH
       (
         SELECT
           address,
-          CASE
-            WHEN CAST(address as VARBINARY) IN (
-              SELECT DISTINCT
+          case
+            when address in (
+              select distinct
                 address
-              FROM
+              from
                 labels.cex_ethereum
-            )
-            OR CAST(address as VARBINARY) IN (
-              SELECT DISTINCT
-                address
-              FROM
-                query_2296923
-            ) THEN 'CEX'
-            WHEN CAST(address as VARBINARY) IN (
-              SELECT DISTINCT
+            ) then 'CEX'
+            when address in (
+              select distinct
                 project_contract_address
-              FROM
+              from
                 dex.trades
-            ) THEN 'DEX'
-            WHEN CAST(address as VARBINARY) IN (
-              SELECT DISTINCT
+            ) then 'DEX'
+            when address in (
+              select distinct
                 address
-              FROM
+              from
                 {{chain}}.creation_traces
             )
-            AND CAST(address as VARBINARY) NOT IN (
-              SELECT DISTINCT
+            and address not in (
+              select distinct
                 project_contract_address
-              FROM
+              from
                 dex.trades
             )
-            AND CAST(address as VARBINARY) NOT IN (
-              SELECT DISTINCT
+            and address not in (
+              select distinct
                 address
-              FROM
+              from
                 fund_address
-            ) THEN 'Other Smart Contracts'
-            WHEN CAST(address as VARBINARY) IN (
-              SELECT DISTINCT
+            ) then 'Other Smart Contracts'
+            when address in (
+              select distinct
                 address
-              FROM
+              from
                 fund_address
-            ) THEN 'VCs/Fund'
-            ELSE 'Individual Address'
-          END AS address_type,
+            ) then 'VCs/Fund'
+            else 'Individual Address'
+          end as type,
           SUM(amount / POWER(10, decimals)) AS amount,
           SUM(amount * price / POWER(10, decimals)) AS value,
           SUM(amount) / (
@@ -165,36 +159,41 @@ WITH
               raw
             WHERE
               address NOT IN (
-                '0x0000000000000000000000000000000000000000',
-                '0x000000000000000000000000000000000000dEaD'
+                0x0000000000000000000000000000000000000000,
+                0x000000000000000000000000000000000000dEaD
               )
           ) AS percent_holdings
         FROM
           price,
           raw
+          LEFT JOIN contracts.contract_mapping c ON address = c.contract_address
         WHERE
           address NOT IN (
-            '0x0000000000000000000000000000000000000000',
-            '0x000000000000000000000000000000000000dEaD'
+            0x0000000000000000000000000000000000000000,
+            0x000000000000000000000000000000000000dEaD
+          )
+          AND (
+            c.contract_address IS NULL
+            OR c.contract_project = 'Gnosis Safe'
           )
         GROUP BY
           address
         ORDER BY
           value DESC
-        LIMIT
-          100
       ) a
       LEFT JOIN labels b ON CAST(a.address AS VARBINARY) = b.address
     WHERE
       a.value > 1
+      AND type not in ('CEX', 'DEX')
     GROUP BY
       a.address,
-      a.address_type,
       a.amount,
       a.value,
       a.percent_holdings
     ORDER BY
       a.percent_holdings DESC
+    limit
+      100
   )
 SELECT
   SUM(percent_holdings_counter) AS total_percent_holdings

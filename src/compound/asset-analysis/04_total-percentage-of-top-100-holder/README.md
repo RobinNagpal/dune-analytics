@@ -114,7 +114,7 @@ labels AS (
 )
 ```
 
-Finally get the address with the largest holding among all the addresses including individual, centralized and decentralized exchanges, fund addresses and smart contracts.
+top_100 CTE calculates the top 100 token-holding addresses by value, categorizes them by type, and excludes certain types (CEX, DEX) from the result, then computes their percentage holdings.
 
 ```sql
 top_100 as (
@@ -124,51 +124,45 @@ top_100 as (
       (
         SELECT
           address,
-          CASE
-            WHEN CAST(address as VARBINARY) IN (
-              SELECT DISTINCT
+          case
+            when address in (
+              select distinct
                 address
-              FROM
+              from
                 labels.cex_ethereum
-            )
-            OR CAST(address as VARBINARY) IN (
-              SELECT DISTINCT
-                address
-              FROM
-                query_2296923
-            ) THEN 'CEX'
-            WHEN CAST(address as VARBINARY) IN (
-              SELECT DISTINCT
+            ) then 'CEX'
+            when address in (
+              select distinct
                 project_contract_address
-              FROM
+              from
                 dex.trades
-            ) THEN 'DEX'
-            WHEN CAST(address as VARBINARY) IN (
-              SELECT DISTINCT
+            ) then 'DEX'
+            when address in (
+              select distinct
                 address
-              FROM
+              from
                 {{chain}}.creation_traces
             )
-            AND CAST(address as VARBINARY) NOT IN (
-              SELECT DISTINCT
+            and address not in (
+              select distinct
                 project_contract_address
-              FROM
+              from
                 dex.trades
             )
-            AND CAST(address as VARBINARY) NOT IN (
-              SELECT DISTINCT
+            and address not in (
+              select distinct
                 address
-              FROM
+              from
                 fund_address
-            ) THEN 'Other Smart Contracts'
-            WHEN CAST(address as VARBINARY) IN (
-              SELECT DISTINCT
+            ) then 'Other Smart Contracts'
+            when address in (
+              select distinct
                 address
-              FROM
+              from
                 fund_address
-            ) THEN 'VCs/Fund'
-            ELSE 'Individual Address'
-          END AS address_type,
+            ) then 'VCs/Fund'
+            else 'Individual Address'
+          end as type,
           SUM(amount / POWER(10, decimals)) AS amount,
           SUM(amount * price / POWER(10, decimals)) AS value,
           SUM(amount) / (
@@ -178,36 +172,41 @@ top_100 as (
               raw
             WHERE
               address NOT IN (
-                '0x0000000000000000000000000000000000000000',
-                '0x000000000000000000000000000000000000dEaD'
+                0x0000000000000000000000000000000000000000,
+                0x000000000000000000000000000000000000dEaD
               )
           ) AS percent_holdings
         FROM
           price,
           raw
+          LEFT JOIN contracts.contract_mapping c ON address = c.contract_address
         WHERE
           address NOT IN (
-            '0x0000000000000000000000000000000000000000',
-            '0x000000000000000000000000000000000000dEaD'
+            0x0000000000000000000000000000000000000000,
+            0x000000000000000000000000000000000000dEaD
+          )
+          AND (
+            c.contract_address IS NULL
+            OR c.contract_project = 'Gnosis Safe'
           )
         GROUP BY
           address
         ORDER BY
           value DESC
-        LIMIT
-          100
       ) a
       LEFT JOIN labels b ON CAST(a.address AS VARBINARY) = b.address
     WHERE
       a.value > 1
+      AND type not in ('CEX', 'DEX')
     GROUP BY
       a.address,
-      a.address_type,
       a.amount,
       a.value,
       a.percent_holdings
     ORDER BY
       a.percent_holdings DESC
+    limit
+      100
   )
 ```
 
@@ -225,12 +224,12 @@ FROM
 - dex.prices_latest (Curated dataset contains token addresses and their USD price. Made by @bernat. Present in the spellbook of dune analytics [Spellbook-Dex-PricesLatest](https://github.com/duneanalytics/spellbook/blob/main/models/dex/dex_prices_latest.sql))
 - tokens.erc20 (Curated dataset for erc20 tokens with addresses, symbols and decimals. Origin unknown)
 - erc20\_{{Blockchain}}.evt_Transfer (Curated dataset of erc20 tokens' transactions. Origin unknown)
-- query_2296923 (returns table with exchange names and their addresses. Uses hardcoded values union with `dune_upload.okx_por_evm` table. [Query-2296923](https://dune.com/queries/2296923))
 - dex.trades (Curated dataset contains DEX trade info like taker and maker. Present in spellbook of dune analytics [Spellbook-Dex-Trades](https://github.com/duneanalytics/spellbook/blob/main/models/_sector/dex/trades/dex_trades.sql))
 - {{chain}}.contracts (Curated dataset contains abi, code, name, address, etc of the given chain smart contracts. Origin unknown)
 - labels.cex_ethereum (Curated dataset contains CEX addresses of ethereum with category, contributor, model name and label type. Present in the spellbook of dune analytics [Spellbook-Labels-CEX-Ethereum](https://github.com/duneanalytics/spellbook/blob/main/models/labels/addresses/institution/identifier/cex/labels_cex_ethereum.sql))
 - labels.all (Curated dataset contains labels of known addresses across chains including funds, exchanges, safes, contracts, ens, coins, bridges, dao, pools, etc. Origin unknown)
 - {{Blockchain}}.creation_traces (Raw data contains tx hash, address and code.)
 - labels.funds (Curated dataset contains labels of known funds addresses across chains. Made by @soispoke. Present in the spellbook of dune analytics [Spellbook-Labels-Funds](https://github.com/duneanalytics/spellbook/blob/main/models/labels/addresses/institution/identifier/funds/labels_funds.sql))
+- contracts.contract_mapping (Curated dataset contains mapping of contracts to its creators and names on EVM chains.)
 
 ## Alternative Choices
