@@ -13,7 +13,7 @@ This query calculates the total transaction count for the top 100 holders of the
 
 # Query Explanation
 
-This query calculates the top 100 token holders by their token holdings, including their token values in USD and their respective percentages of the total supply. It also computes the total transaction count of these holders and joins this data for a comprehensive view of the top token holders and their activities.
+This query calculates the top 100 token holders by their token holdings, including their token values in USD. It also computes the total transaction count of these holders and joins this data for a comprehensive view of the top token holders and their activities.
 
 Price CTE calculates the average price of the specified token and retrieves its symbol and decimals
 
@@ -62,7 +62,7 @@ raw AS (
   )
 ```
 
-Distribution CTE calculates the total holdings and the percentage of total supply each address holds.
+Distribution CTE calculates the total token holdings and their USD value for each address by summing up the token amounts and multiplying by their price, grouping the results by address.
 
 ```sql
 distribution AS (
@@ -70,12 +70,6 @@ distribution AS (
       address,
       SUM(amount / POWER(10, decimals)) AS holding,
       SUM(amount * price / POWER(10, decimals)) AS holding_usd,
-      SUM(amount) / (
-        SELECT
-          SUM(amount)
-        FROM
-          raw
-      ) AS percent_holdings
     FROM
       price,
       raw
@@ -150,7 +144,7 @@ transaction_counts AS (
   )
 ```
 
-Finally shows the addresses, their token holdings in both tokens and USD, their percentage of total holdings, and their transaction count, ordered by transaction count.
+Finally shows the addresses, their token holdings in both tokens and USD, and their transaction count, ordered by transaction count.
 
 ```sql
 SELECT
