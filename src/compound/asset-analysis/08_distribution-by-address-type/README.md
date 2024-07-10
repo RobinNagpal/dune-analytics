@@ -20,25 +20,20 @@ For example:
 
 This query calculates the distribution of token holdings by categorizing addresses into different types and summing their holdings. It considers various types of addresses like exchanges, smart contracts, multi-sig wallets, venture capital funds, and individual addresses. By joining price information and raw transfer data, it calculates the total holdings and their USD value, then filters and groups these holdings by address type.
 
-Price CTE calculates the average price of the specified token and retrieves its symbol and decimals
+Token Decimals CTE retrieves the decimal precision of a specific ERC-20 token on a specified blockchain
 
 ```sql
-price AS (
-    SELECT
-        symbol,
-        decimals,
-        AVG(token_price_usd) AS price
-    FROM
-        dex.prices_latest,
-        tokens.erc20
-    WHERE
-        token_address = {{Token Contract Address}}
-        AND contract_address = {{Token Contract Address}}
-        AND blockchain = '{{Blockchain}}'
-    GROUP BY
-        symbol,
-        decimals
-)
+token_decimals as (
+    select
+      decimals
+    from
+      tokens.erc20
+    where
+      contract_address = {{token_address}}
+      and blockchain = '{{chain}}'
+    group by
+      1
+  )
 ```
 
 Raw CTE calculates the net amount of tokens held by each address by summing up incoming and outgoing transfers
@@ -96,63 +91,92 @@ Finally categorize each of the address into one of the several types, filtering 
 - VCs/Fund: Addresses identified as belonging to venture capital or funds.
 - Individual Address: All other addresses.
 
-Groups by address and type to sum their holdings and value.
-Filters out addresses with a value of less than 1.
+Groups by address and type to sum their holdings.
+Filters out addresses with a holdings of less than 0.
 Aggregates the total holdings by address type.
 
 ```sql
-SELECT
-    type,
-    SUM(amount) AS total_holdings
-FROM
-    (
-        SELECT
-            address,
-            CASE
-                WHEN address IN (
-                    SELECT DISTINCT address FROM cex_evms.addresses
-                )
-                OR address IN (
-                    SELECT DISTINCT address FROM query_2296923
-                ) THEN 'CEX'
-                WHEN address IN (
-                    SELECT DISTINCT project_contract_address FROM dex.trades
-                ) THEN 'DEX'
-                WHEN address IN (
-                    SELECT DISTINCT address FROM safe.safes_all
-                ) THEN 'Multi-Sig Wallet'
-                WHEN address IN (
-                    SELECT DISTINCT address FROM {{Blockchain}}.creation_traces
-                )
-                AND address NOT IN (
-                    SELECT DISTINCT project_contract_address FROM dex.trades
-                )
-                AND address NOT IN (
-                    SELECT DISTINCT address FROM safe.safes_all
-                )
-                AND address NOT IN (
-                    SELECT DISTINCT address FROM fund_address
-                ) THEN 'Other Smart Contracts'
-                WHEN address IN (
-                    SELECT DISTINCT address FROM fund_address
-                ) THEN 'VCs/Fund'
-                ELSE 'Individual Address'
-            END AS type,
-            SUM(amount / POWER(10, decimals)) AS amount,
-            SUM(amount * price / POWER(10, decimals)) AS value
-        FROM
-            price,
-            raw
-        WHERE
-            address <> 0x0000000000000000000000000000000000000000
-        GROUP BY
-            address,
-            type
-    ) a
-WHERE
-    value > 1
-GROUP BY
-    type;
+select
+  type,
+  sum(amount) as total_holdings
+from
+  (
+    select
+      address,
+      case
+        when address in (
+          select distinct
+            address
+          from
+            cex_evms.addresses
+        )
+        or address in (
+          select distinct
+            address
+          from
+            labels.cex_ethereum
+        ) then 'CEX'
+        when address in (
+          select distinct
+            project_contract_address
+          from
+            dex.trades
+        ) then 'DEX'
+        when address in (
+          select distinct
+            address
+          from
+            safe.safes_all
+        ) then 'Multi-Sig Wallet'
+        when address in (
+          select distinct
+            address
+          from
+            {{chain}}.creation_traces
+        )
+        and address not in (
+          select distinct
+            project_contract_address
+          from
+            dex.trades
+        )
+        and address not in (
+          select distinct
+            address
+          from
+            safe.safes_all
+        )
+        and address not in (
+          select distinct
+            address
+          from
+            fund_address
+        ) then 'Other Smart Contracts'
+        when address in (
+          select distinct
+            address
+          from
+            fund_address
+        ) then 'VCs/Fund'
+        else 'Individual Address'
+      end as type,
+      sum(amount / power(10, decimals)) as amount
+    from
+      token_decimals,
+      raw
+    where
+      address NOT IN (
+        0x0000000000000000000000000000000000000000,
+        0x000000000000000000000000000000000000dEaD
+      )
+    group by
+      1,
+      2
+  ) a
+where
+  amount > 0
+group by
+  1
 ```
 
 ## Tables used
@@ -162,7 +186,6 @@ GROUP BY
 - erc20\_{{Blockchain}}.evt_Transfer (Curated dataset of erc20 tokens' transactions. Origin unknown)
 - labels.funds (Curated dataset contains labels of known funds addresses across chains. Made by @soispoke. Present in the spellbook of dune analytics [Spellbook-Labels-Funds](https://github.com/duneanalytics/spellbook/blob/main/models/labels/addresses/institution/identifier/funds/labels_funds.sql))
 - cex_evms.addresses (Curated dataset contains all CEX-tied addresses identified across EVM chains. Present in the spellbook of dune analytics [Spellbook-CEX](https://github.com/duneanalytics/spellbook/blob/main/models/cex/cex_evms_addresses.sql))
-- query_2296923 (returns table with exchange names and their addresses. Uses hardcoded values union with `dune_upload.okx_por_evm` table. [Query-2296923](https://dune.com/queries/2296923))
 - dex.trades (Curated dataset contains DEX trade info like taker and maker. Present in spellbook of dune analytics [Spellbook-Dex-Trades](https://github.com/duneanalytics/spellbook/blob/main/models/_sector/dex/trades/dex_trades.sql))
 - safe.safes_all (Curated dataset that lists all Safes across chains. Present in the spellbook of dune analytics [Spellbook-Safe-SafesAll](https://github.com/duneanalytics/spellbook/blob/main/models/safe/safe_safes_all.sql))
 - {{Blockchain}}.creation_traces (Raw data contains tx hash, address and code.)

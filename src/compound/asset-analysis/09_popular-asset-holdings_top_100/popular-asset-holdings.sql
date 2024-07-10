@@ -60,8 +60,17 @@ WITH
     FROM
       price,
       token_raw
+      LEFT JOIN contracts.contract_mapping c ON address = CAST(c.contract_address AS VARCHAR)
     WHERE
       price.contract_address = {{token_address}}
+      and address not in (
+        '0x0000000000000000000000000000000000000000',
+        '0x000000000000000000000000000000000000dEaD'
+      )
+      AND (
+        c.contract_address IS NULL
+        OR c.contract_project = 'Gnosis Safe'
+      )
     GROUP BY
       address
   ),
@@ -103,9 +112,13 @@ WITH
       td.holding_usd AS token_holding_usd
     FROM
       token_distribution td
-      LEFT JOIN dex_cex_addresses dca ON td.address = dca.address
     WHERE
-      dca.address IS NULL
+      td.address not in (
+        select distinct
+          address
+        from
+          dex_cex_addresses
+      )
     ORDER BY
       td.holding DESC
     LIMIT

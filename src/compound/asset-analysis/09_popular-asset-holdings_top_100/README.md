@@ -88,8 +88,17 @@ token_distribution AS (
     FROM
       price,
       token_raw
+      LEFT JOIN contracts.contract_mapping c ON address = CAST(c.contract_address AS VARCHAR)
     WHERE
       price.contract_address = {{token_address}}
+      and address not in (
+        '0x0000000000000000000000000000000000000000',
+        '0x000000000000000000000000000000000000dEaD'
+      )
+      AND (
+        c.contract_address IS NULL
+        OR c.contract_project = 'Gnosis Safe'
+      )
     GROUP BY
       address
   )
@@ -141,9 +150,13 @@ top_100_token_holders AS (
       td.holding_usd AS token_holding_usd
     FROM
       token_distribution td
-      LEFT JOIN dex_cex_addresses dca ON td.address = dca.address
     WHERE
-      dca.address IS NULL
+      td.address not in (
+        select distinct
+          address
+        from
+          dex_cex_addresses
+      )
     ORDER BY
       td.holding DESC
     LIMIT
@@ -335,6 +348,8 @@ ORDER BY
 - [0x5a98fcbea516cf06857215779fd812ca3bef1b32](https://etherscan.io/address/0x5a98fcbea516cf06857215779fd812ca3bef1b32): LDO token address
 - [0xc00e94cb662c3520282e6f5717214004a7f26888](https://etherscan.io/address/0xc00e94cb662c3520282e6f5717214004a7f26888): COMP token address
 - [0xdAC17F958D2ee523a2206206994597C13D831ec7](https://etherscan.io/address/0xdAC17F958D2ee523a2206206994597C13D831ec7): USDT token address
+- [0x0000000000000000000000000000000000000000](https://etherscan.io/address/0x0000000000000000000000000000000000000000): This address is not owned by any user, is often associated with token burn & mint/genesis events and used as a generic null address.
+- [0x000000000000000000000000000000000000dEaD](https://etherscan.io/address/0x000000000000000000000000000000000000dEaD): This address is commonly used by projects to burn tokens (reducing total supply).
 
 ## Tables used
 
@@ -344,5 +359,6 @@ ORDER BY
 - dex.addresses (Curated dataset contains known decentralised exchange addresses. Made by @rantum. Present in the spellbook of dune analytics [Spellbook-CEX](https://github.com/duneanalytics/spellbook/blob/main/models/dex/dex_schema.yml))
 - dex.trades (Curated dataset contains DEX trade info like taker and maker. Present in spellbook of dune analytics [Spellbook-Dex-Trades](https://github.com/duneanalytics/spellbook/blob/main/models/_sector/dex/trades/dex_trades.sql))
 - cex.addresses (Curated dataset contains all CEX-tied addresses identified. Made by @hildobby. Present in the spellbook of dune analytics [Spellbook-CEX](https://github.com/duneanalytics/spellbook/blob/main/models/cex/cex_addresses.sql))
+- contracts.contract_mapping (Curated dataset contains mapping of contracts to its creators and names on EVM chains.)
 
 ## Alternative Choices
