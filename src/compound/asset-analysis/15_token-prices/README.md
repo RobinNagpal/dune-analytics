@@ -1,6 +1,6 @@
 # About
 
-Here we show various price metrics for the given token on the specified blockchain. The metrics include the current price, minimum price, maximum price, average price, and average price over the last 24 hours.
+Here we show various price metrics for the given token on the specified blockchain. The metrics include minimum price, maximum price, average price, and average price over the last 24 hours.
 
 # Graph
 
@@ -10,19 +10,33 @@ Here we show various price metrics for the given token on the specified blockcha
 
 Calculating these price metrics is essential for many reasons:
 
-- Current Price: Knowing the latest price of the token helps in making real-time trading decisions and assessing the token's current market value.
 - Minimum and Maximum Prices: Understanding the price range (min and max prices) gives insight into the volatility and stability of the token's price over time.
 - Average Price: The average price provides a general idea of the token's overall price level and can be used as a benchmark for comparison with the current price.
 - Average Price over 24 Hours: The 24-hour average price helps in assessing short-term price trends and market sentiment, which is crucial for traders and investors.
 
 # Query Explanation
 
-The query simply selects the median prices from the DEX prices table for the given token and blockchain. Then calculates the price metrics by using aggregate functions and time interval.
+The query simply selects the prices from the prices USD table for the given token and blockchain. Then calculates the price metrics by using aggregate functions and time interval.
 
-Data CTE selects the `median_price` and `hour` from the `dex.prices` table where the token address and blockchain match the given values.
+Data CTE selects the `minute` and `price` from the `prices.usd` table where the token address and blockchain match the given values.
 
 ```sql
 data as (
+    select
+      minute,
+      price
+    from
+      prices.usd
+    where
+      contract_address = {{token_address}}
+      and blockchain = '{{chain}}'
+  )
+```
+
+Selects hour-level price data for the same token and blockchain.
+
+```sql
+data_max_price as (
     select
       hour,
       median_price as price
@@ -31,21 +45,6 @@ data as (
     where
       contract_address = {{token_address}}
       and blockchain = '{{chain}}'
-  )
-```
-
-Latest data CTE retrieves the latest price by ordering the data by hour in descending order and limiting the result to the most recent entry.
-
-```sql
-latest_data as (
-    select
-      price as latest_price
-    from
-      data
-    order by
-      hour desc
-    limit
-      1
   )
 ```
 
@@ -60,14 +59,14 @@ min_price_data as (
   )
 ```
 
-Maximum price data CTE calculates the maximum price from the data.
+Maximum price data CTE calculates the maximum price from the data_max_price.
 
 ```sql
 max_price_data as (
     select
       max(price) as max_price
     from
-      data
+      data_max_price
   )
 ```
 
@@ -91,7 +90,7 @@ avg_price_24h_data as (
     from
       data
     where
-      hour >= CURRENT_TIMESTAMP - INTERVAL '24' hour
+      minute >= CURRENT_TIMESTAMP - INTERVAL '24' hour
   )
 ```
 
@@ -131,10 +130,9 @@ select
   ) as avg_price_24h;
 ```
 
-**Hardcoded addresses**
-
 ## Tables used
 
 - dex.prices (This table loads the prices of tokens from the dex.trades table. This helps for missing tokens from the prices.usd table. Made by @henrystats. Present in the spellbook of dune analytics [Spellbook-Dex-Prices](https://github.com/duneanalytics/spellbook/blob/main/models/dex/dex_schema.yml))
+- prices.usd (Curated dataset contains token addresses and their USD prices.)
 
 ## Alternative Choices

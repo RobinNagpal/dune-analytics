@@ -1,6 +1,16 @@
 with
   data as (
     select
+      minute,
+      price
+    from
+      prices.usd
+    where
+      contract_address = {{token_address}}
+      and blockchain = '{{chain}}'
+  ),
+  data_max_price as (
+    select
       hour,
       median_price as price
     from
@@ -8,16 +18,6 @@ with
     where
       contract_address = {{token_address}}
       and blockchain = '{{chain}}'
-  ),
-  latest_data as (
-    select
-      price as latest_price
-    from
-      data
-    order by
-      hour desc
-    limit
-      1
   ),
   min_price_data as (
     select
@@ -29,7 +29,7 @@ with
     select
       max(price) as max_price
     from
-      data
+      data_max_price
   ),
   avg_price_data as (
     select
@@ -43,15 +43,9 @@ with
     from
       data
     where
-      hour >= CURRENT_TIMESTAMP - INTERVAL '24' hour
+      minute >= CURRENT_TIMESTAMP - INTERVAL '24' hour
   )
 select
-  (
-    select
-      latest_price
-    from
-      latest_data
-  ) as latest_price,
   (
     select
       min_price
