@@ -1,6 +1,6 @@
 # About
 
-Here we show various price metrics for the given token on the specified blockchain. The metrics include minimum price, maximum price, average price, and average price over the last 24 hours.
+This query retrieves various price metrics for the given token on the specified blockchain over the last 3 months. The metrics include the minimum price, maximum price, average price over the last 3 months, and average price over the last 24 hours.
 
 # Graph
 
@@ -48,7 +48,7 @@ data_max_price as (
   )
 ```
 
-Minimum price data CTE calculates the minimum price from the data.
+Minimum price data CTE calculates the minimum price from the data for the last 90 days.
 
 ```sql
 min_price_data as (
@@ -56,10 +56,12 @@ min_price_data as (
       min(price) as min_price
     from
       data
+    where
+      minute >= CURRENT_TIMESTAMP - INTERVAL '90' day
   )
 ```
 
-Maximum price data CTE calculates the maximum price from the data_max_price.
+Maximum price data CTE calculates the maximum price from the data_max_price for the last 90 days.
 
 ```sql
 max_price_data as (
@@ -67,17 +69,21 @@ max_price_data as (
       max(price) as max_price
     from
       data_max_price
+    where
+      hour >= CURRENT_TIMESTAMP - INTERVAL '90' day
   )
 ```
 
-Average price data CTE calculates the average price from the data.
+Average price data CTE calculates the average price from the data for the last 90 days.
 
 ```sql
 avg_price_data as (
     select
-      avg(price) as avg_price
+      avg(price) as avg_price_90_days
     from
       data
+    where
+      minute >= CURRENT_TIMESTAMP - INTERVAL '90' day
   )
 ```
 
