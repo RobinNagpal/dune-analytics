@@ -3,17 +3,16 @@ WITH
     SELECT
       symbol,
       decimals,
-      AVG(token_price_usd) AS price
+      price
     FROM
-      dex.prices_latest,
-      tokens.erc20
+      prices.usd_latest
     WHERE
-      token_address = {{token_address}}
-      AND contract_address = {{token_address}}
+      contract_address = {{token_address}}
       AND blockchain = '{{chain}}'
-    GROUP BY
-      1,
-      2
+    ORDER BY
+      minute DESC
+    LIMIT
+      1
   ),
   raw AS (
     SELECT
@@ -60,7 +59,7 @@ WITH
         select distinct
           address
         from
-          labels.cex_ethereum
+          labels.cex_{{chain}}
         union all
         select distinct
           project_contract_address
@@ -112,4 +111,4 @@ FROM
   top_100_holders t
   LEFT JOIN transaction_counts tc ON t.address = tc.address
 ORDER BY
-  transaction_count DESC;
+  holding_usd DESC;
