@@ -13,7 +13,7 @@ WITH
         0x514910771af9ca656af840dff83e8264ecf986ca, -- LINK token
         0x1f9840a85d5af5bf1d1762f925bdaddc4201f984, -- UNI token
         0x5a98fcbea516cf06857215779fd812ca3bef1b32, -- LDO token
-        0xc00e94cb662c3520282e6f5717214004a7f26888, -- COMP token
+        0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, -- USDC token
         0xdAC17F958D2ee523a2206206994597C13D831ec7, -- USDT token
         {{token_address}}
       )
@@ -21,7 +21,7 @@ WITH
         0x514910771af9ca656af840dff83e8264ecf986ca,
         0x1f9840a85d5af5bf1d1762f925bdaddc4201f984,
         0x5a98fcbea516cf06857215779fd812ca3bef1b32,
-        0xc00e94cb662c3520282e6f5717214004a7f26888,
+        0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,
         0xdAC17F958D2ee523a2206206994597C13D831ec7,
         {{token_address}}
       )
@@ -136,7 +136,7 @@ WITH
         0x514910771af9ca656af840dff83e8264ecf986ca,
         0x1f9840a85d5af5bf1d1762f925bdaddc4201f984,
         0x5a98fcbea516cf06857215779fd812ca3bef1b32,
-        0xc00e94cb662c3520282e6f5717214004a7f26888,
+        0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,
         0xdAC17F958D2ee523a2206206994597C13D831ec7
       )
     GROUP BY
@@ -154,7 +154,7 @@ WITH
         0x514910771af9ca656af840dff83e8264ecf986ca,
         0x1f9840a85d5af5bf1d1762f925bdaddc4201f984,
         0x5a98fcbea516cf06857215779fd812ca3bef1b32,
-        0xc00e94cb662c3520282e6f5717214004a7f26888,
+        0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,
         0xdAC17F958D2ee523a2206206994597C13D831ec7
       )
     GROUP BY
@@ -244,19 +244,19 @@ SELECT
   COALESCE(
     MAX(
       CASE
-        WHEN ab.contract_address = 0xc00e94cb662c3520282e6f5717214004a7f26888 THEN ab.balance
+        WHEN ab.contract_address = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 THEN ab.balance
       END
     ),
     0
-  ) AS comp_holding,
+  ) AS usdc_holding,
   COALESCE(
     MAX(
       CASE
-        WHEN ab.contract_address = 0xc00e94cb662c3520282e6f5717214004a7f26888 THEN ab.balance * ab.price
+        WHEN ab.contract_address = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 THEN ab.balance * ab.price
       END
     ),
     0
-  ) AS comp_holding_usd,
+  ) AS usdc_holding_usd,
   COALESCE(
     MAX(
       CASE

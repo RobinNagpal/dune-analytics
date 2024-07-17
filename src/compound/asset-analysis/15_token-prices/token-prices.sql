@@ -24,18 +24,24 @@ with
       min(price) as min_price
     from
       data
+    where
+      minute >= CURRENT_TIMESTAMP - INTERVAL '90' day
   ),
   max_price_data as (
     select
       max(price) as max_price
     from
       data_max_price
+    where
+      hour >= CURRENT_TIMESTAMP - INTERVAL '90' day
   ),
   avg_price_data as (
     select
-      avg(price) as avg_price
+      avg(price) as avg_price_90_days
     from
       data
+    where
+      minute >= CURRENT_TIMESTAMP - INTERVAL '90' day
   ),
   avg_price_24h_data as (
     select
@@ -60,7 +66,7 @@ select
   ) as max_price,
   (
     select
-      avg_price
+      avg_price_90_days
     from
       avg_price_data
   ) as avg_price,

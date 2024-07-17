@@ -1,10 +1,11 @@
 # About
 
-The table shows the given token's holdings and its USD balance of the Top 100 holders of the given token and blockchain, excluding centralized and decentralized exchanges. It also retrieves the holdings and USD balance of popular tokens for the top 100 token holders, including UNI, LINK, COMP, USDT, LDO.
+The table shows the given token's holdings and its USD balance of the Top 100 holders of the given token and blockchain, excluding centralized and decentralized exchanges. It also retrieves the holdings and USD balance of popular tokens for the top 100 token holders, including UNI, LINK, USDC, USDT, LDO.
 
 # Graph
 
 ![popularAssetHoldings](popular-asset-holdings.png)
+![popularAssetHoldings2](popular-asset-holdings-2.png)
 
 # Relevance
 
@@ -12,7 +13,7 @@ This analysis is relevant for understanding asset distribution and the investmen
 
 # Query Explanation
 
-Identifies the top 100 holders of a specific token, excluding known exchange addresses, and their holdings in other key tokens (LINK, UNI, LDO, COMP, USDT) for portfolio diversification insights.
+Identifies the top 100 holders of a specific token, excluding known exchange addresses, and their holdings in other key tokens (LINK, UNI, LDO, USDC, USDT) for portfolio diversification insights.
 
 Price CTE calculates the average price of the specified token as well as of the popular tokens and get their decimals and symbol as well for further calculation, grouping them by their contract addresses, symbols, and decimals.
 
@@ -31,7 +32,7 @@ price AS (
         0x514910771af9ca656af840dff83e8264ecf986ca, -- LINK token
         0x1f9840a85d5af5bf1d1762f925bdaddc4201f984, -- UNI token
         0x5a98fcbea516cf06857215779fd812ca3bef1b32, -- LDO token
-        0xc00e94cb662c3520282e6f5717214004a7f26888, -- COMP token
+        0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, -- USDC token
         0xdAC17F958D2ee523a2206206994597C13D831ec7, -- USDT token
         {{token_address}}
       )
@@ -39,7 +40,7 @@ price AS (
         0x514910771af9ca656af840dff83e8264ecf986ca,
         0x1f9840a85d5af5bf1d1762f925bdaddc4201f984,
         0x5a98fcbea516cf06857215779fd812ca3bef1b32,
-        0xc00e94cb662c3520282e6f5717214004a7f26888,
+        0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,
         0xdAC17F958D2ee523a2206206994597C13D831ec7,
         {{token_address}}
       )
@@ -179,7 +180,7 @@ other_tokens_raw AS (
         0x514910771af9ca656af840dff83e8264ecf986ca,
         0x1f9840a85d5af5bf1d1762f925bdaddc4201f984,
         0x5a98fcbea516cf06857215779fd812ca3bef1b32,
-        0xc00e94cb662c3520282e6f5717214004a7f26888,
+        0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,
         0xdAC17F958D2ee523a2206206994597C13D831ec7
       )
     GROUP BY
@@ -197,7 +198,7 @@ other_tokens_raw AS (
         0x514910771af9ca656af840dff83e8264ecf986ca,
         0x1f9840a85d5af5bf1d1762f925bdaddc4201f984,
         0x5a98fcbea516cf06857215779fd812ca3bef1b32,
-        0xc00e94cb662c3520282e6f5717214004a7f26888,
+        0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,
         0xdAC17F958D2ee523a2206206994597C13D831ec7
       )
     GROUP BY
@@ -302,19 +303,19 @@ SELECT
   COALESCE(
     MAX(
       CASE
-        WHEN ab.contract_address = 0xc00e94cb662c3520282e6f5717214004a7f26888 THEN ab.balance
+        WHEN ab.contract_address = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 THEN ab.balance
       END
     ),
     0
-  ) AS comp_holding,
+  ) AS usdc_holding,
   COALESCE(
     MAX(
       CASE
-        WHEN ab.contract_address = 0xc00e94cb662c3520282e6f5717214004a7f26888 THEN ab.balance * ab.price
+        WHEN ab.contract_address = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 THEN ab.balance * ab.price
       END
     ),
     0
-  ) AS comp_holding_usd,
+  ) AS usdc_holding_usd,
   COALESCE(
     MAX(
       CASE
@@ -346,7 +347,7 @@ ORDER BY
 - [0x514910771af9ca656af840dff83e8264ecf986ca](https://etherscan.io/address/0x514910771af9ca656af840dff83e8264ecf986ca): LINK token address
 - [0x1f9840a85d5af5bf1d1762f925bdaddc4201f984](https://etherscan.io/address/0x1f9840a85d5af5bf1d1762f925bdaddc4201f984): UNI token address
 - [0x5a98fcbea516cf06857215779fd812ca3bef1b32](https://etherscan.io/address/0x5a98fcbea516cf06857215779fd812ca3bef1b32): LDO token address
-- [0xc00e94cb662c3520282e6f5717214004a7f26888](https://etherscan.io/address/0xc00e94cb662c3520282e6f5717214004a7f26888): COMP token address
+- [0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48](https://etherscan.io/address/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48): USDC token address
 - [0xdAC17F958D2ee523a2206206994597C13D831ec7](https://etherscan.io/address/0xdAC17F958D2ee523a2206206994597C13D831ec7): USDT token address
 - [0x0000000000000000000000000000000000000000](https://etherscan.io/address/0x0000000000000000000000000000000000000000): This address is not owned by any user, is often associated with token burn & mint/genesis events and used as a generic null address.
 - [0x000000000000000000000000000000000000dEaD](https://etherscan.io/address/0x000000000000000000000000000000000000dEaD): This address is commonly used by projects to burn tokens (reducing total supply).
