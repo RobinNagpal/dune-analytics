@@ -8,7 +8,7 @@ The graph for number of holders over time displays the total number of unique ad
 ![totalNumberOfHolders](total-number-of-holders.png)
 ![numberOfHoldersOverTime](number-of-holders-over-time.png)
 ![numberOfHoldersOverTimeWithGreaterTokenValueThan$100](number-of-holders-greater-than-$100-token-value.png)
-![numberOfHoldersOverTimeWithGreaterTokensThan0.001%](number-of-holders-greater-than-0.001%-supply.png)
+![numberOfHoldersOverTimeWithLessOrEqualTokenValueThan$100](number-of-holders-less-than-equal-$100-token-value.png)
 
 # Relevance
 
@@ -213,9 +213,9 @@ ORDER BY
 
 - {{Blockchain}}.transactions (Raw data of a chain containing all kinds of transactions)
 
-## number of holders over time having token value greater than $100
+## number of holders over time having token value greater than $1000
 
-This query calculates the number of Ethereum token holders over time, specifically for a given token, UNI, and LINK. The query also determines the number of holders who possess more than $100 worth of tokens based on daily prices
+This query calculates the number of Ethereum token holders over time, specifically for a given token, UNI, and LINK. The query also determines the number of holders who possess more than $1000 worth of tokens based on daily prices
 
 This query also uses the same CTE transfers, balance_with_gap_days, days and balance_all_days
 
@@ -239,7 +239,7 @@ token_daily_prices AS (
   )
 ```
 
-Counts the number of holders for each day whose token holdings exceed $100
+Counts the number of holders for each day whose token holdings exceed $1000
 
 ```sql
 token_holders_with_token_value AS (
@@ -247,9 +247,9 @@ token_holders_with_token_value AS (
       b.day AS "Date",
       COUNT(
         CASE
-          WHEN (balance * p.price / POWER(10, p.decimals)) > 100 THEN address
+          WHEN (balance * p.price / POWER(10, p.decimals)) > 1000 THEN address
         END
-      ) AS "Holders with Token Value > $100"
+      ) AS "Holders with Token Value > $1000"
     FROM
       token_balance_all_days AS b
       LEFT JOIN token_daily_prices AS p ON b.day = p.day
@@ -265,13 +265,15 @@ The final SELECT statement combines the data from the above CTEs using FULL JOIN
 ```sql
 SELECT
   COALESCE(htv_token."Date", htv_uni."Date", htv_link."Date") AS "Date",
-  COALESCE(htv_token."Holders with Token Value > $100", 0) AS "Token Holders with Token Value > $100",
-  COALESCE(htv_uni."Holders with Token Value > $100", 0) AS "UNI Holders with Token Value > $100",
-  COALESCE(htv_link."Holders with Token Value > $100", 0) AS "LINK Holders with Token Value > $100"
+  COALESCE(htv_token."Holders with Token Value > $1000", 0) AS "Token Holders with Token Value > $1000",
+  COALESCE(htv_uni."Holders with Token Value > $1000", 0) AS "UNI Holders with Token Value > $1000",
+  COALESCE(htv_link."Holders with Token Value > $1000", 0) AS "LINK Holders with Token Value > $1000"
 FROM
   token_holders_with_token_value htv_token
   FULL JOIN uni_holders_with_token_value htv_uni ON htv_token."Date" = htv_uni."Date"
   FULL JOIN link_holders_with_token_value htv_link ON htv_token."Date" = htv_link."Date"
+where
+  htv_token."Holders with Token Value > $1000" > 0
 ORDER BY
   COALESCE(htv_token."Date", htv_uni."Date", htv_link."Date");
 ```
@@ -280,5 +282,79 @@ ORDER BY
 
 - erc20\_{{Blockchain}}.evt_Transfer (Curated dataset of erc20 tokens' transactions. Origin unknown)
 - dex.prices (This table loads the prices of tokens from the dex.trades table. This helps for missing tokens from the prices.usd table. Made by @henrystats. Present in the spellbook of dune analytics [Spellbook-Dex-Prices](https://github.com/duneanalytics/spellbook/blob/main/models/dex/dex_schema.yml))
+- tokens.erc20 (Curated dataset for erc20 tokens with addresses, symbols and decimals. Origin unknown)
+
+### Alternative Choices
+
+## number of holders over time having token value less than or equal to $1000
+
+This query calculates the number of token holders over time, specifically for a given token, UNI, and LINK, who possess tokens with a value of $1000 or less based on daily prices.
+
+This query also uses the same CTE transfers, balance_with_gap_days, days and balance_all_days
+
+Calculates the daily average price for each token
+
+```sql
+token_daily_prices AS (
+    SELECT
+      er.decimals,
+      DATE_TRUNC('day', hour) AS day,
+      AVG(dx.median_price) AS price
+    FROM
+      dex.prices dx
+      JOIN tokens.erc20 er ON er.contract_address = {{token_address}}
+    WHERE
+      dx.contract_address = {{token_address}}
+      AND er.blockchain = '{{chain}}'
+    GROUP BY
+      er.decimals,
+      DATE_TRUNC('day', hour)
+  )
+```
+
+This CTE calculates the number of token holders who have a token value less than or equal to $1000 on each day
+
+```sql
+token_holders_with_token_value AS (
+    SELECT
+      b.day AS "Date",
+      COUNT(
+        CASE
+          WHEN (balance * p.price / POWER(10, p.decimals)) <= 1000 THEN address
+        END
+      ) AS "Holders with Token Value <= $1000"
+    FROM
+      token_balance_all_days AS b
+      LEFT JOIN token_daily_prices AS p ON b.day = p.day
+    WHERE
+      balance > 0
+    GROUP BY
+      b.day
+  )
+```
+
+This final statement retrieves the number of token holders with token values less than or equal to $1000 for the specified token, UNI, and LINK, merging the data by date.
+
+```sql
+SELECT
+  COALESCE(htv_token."Date", htv_uni."Date", htv_link."Date") AS "Date",
+  COALESCE(htv_token."Holders with Token Value <= $1000", 0) AS "Token Holders with Token Value <= $1000",
+  COALESCE(htv_uni."Holders with Token Value <= $1000", 0) AS "UNI Holders with Token Value <= $1000",
+  COALESCE(htv_link."Holders with Token Value <= $1000", 0) AS "LINK Holders with Token Value <= $1000"
+FROM
+  token_holders_with_token_value htv_token
+  FULL JOIN uni_holders_with_token_value htv_uni ON htv_token."Date" = htv_uni."Date"
+  FULL JOIN link_holders_with_token_value htv_link ON htv_token."Date" = htv_link."Date"
+where
+  htv_token."Holders with Token Value <= $1000" > 0
+ORDER BY
+  COALESCE(htv_token."Date", htv_uni."Date", htv_link."Date");
+```
+
+### Tables used
+
+- erc20\_{{Blockchain}}.evt_Transfer (Curated dataset of erc20 tokens' transactions. Origin unknown)
+- dex.prices (This table loads the prices of tokens from the dex.trades table. This helps for missing tokens from the prices.usd table. Made by @henrystats. Present in the spellbook of dune analytics [Spellbook-Dex-Prices](https://github.com/duneanalytics/spellbook/blob/main/models/dex/dex_schema.yml))
+- tokens.erc20 (Curated dataset for erc20 tokens with addresses, symbols and decimals. Origin unknown)
 
 ### Alternative Choices

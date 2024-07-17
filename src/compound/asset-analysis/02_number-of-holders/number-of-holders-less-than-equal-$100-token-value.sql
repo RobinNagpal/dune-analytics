@@ -271,9 +271,9 @@ WITH
       b.day AS "Date",
       COUNT(
         CASE
-          WHEN (balance * p.price / POWER(10, p.decimals)) > 1000 THEN address
+          WHEN (balance * p.price / POWER(10, p.decimals)) <= 1000 THEN address
         END
-      ) AS "Holders with Token Value > $1000"
+      ) AS "Holders with Token Value <= $1000"
     FROM
       token_balance_all_days AS b
       LEFT JOIN token_daily_prices AS p ON b.day = p.day
@@ -287,9 +287,9 @@ WITH
       b.day AS "Date",
       COUNT(
         CASE
-          WHEN (balance * p.price / POWER(10, p.decimals)) > 1000 THEN address
+          WHEN (balance * p.price / POWER(10, p.decimals)) <= 1000 THEN address
         END
-      ) AS "Holders with Token Value > $1000"
+      ) AS "Holders with Token Value <= $1000"
     FROM
       uni_balance_all_days AS b
       LEFT JOIN uni_daily_prices AS p ON b.day = p.day
@@ -303,9 +303,9 @@ WITH
       b.day AS "Date",
       COUNT(
         CASE
-          WHEN (balance * p.price / POWER(10, p.decimals)) > 1000 THEN address
+          WHEN (balance * p.price / POWER(10, p.decimals)) <= 1000 THEN address
         END
-      ) AS "Holders with Token Value > $1000"
+      ) AS "Holders with Token Value <= $1000"
     FROM
       link_balance_all_days AS b
       LEFT JOIN link_daily_prices AS p ON b.day = p.day
@@ -316,14 +316,14 @@ WITH
   )
 SELECT
   COALESCE(htv_token."Date", htv_uni."Date", htv_link."Date") AS "Date",
-  COALESCE(htv_token."Holders with Token Value > $1000", 0) AS "Token Holders with Token Value > $1000",
-  COALESCE(htv_uni."Holders with Token Value > $1000", 0) AS "UNI Holders with Token Value > $1000",
-  COALESCE(htv_link."Holders with Token Value > $1000", 0) AS "LINK Holders with Token Value > $1000"
+  COALESCE(htv_token."Holders with Token Value <= $1000", 0) AS "Token Holders with Token Value <= $1000",
+  COALESCE(htv_uni."Holders with Token Value <= $1000", 0) AS "UNI Holders with Token Value <= $1000",
+  COALESCE(htv_link."Holders with Token Value <= $1000", 0) AS "LINK Holders with Token Value <= $1000"
 FROM
   token_holders_with_token_value htv_token
   FULL JOIN uni_holders_with_token_value htv_uni ON htv_token."Date" = htv_uni."Date"
   FULL JOIN link_holders_with_token_value htv_link ON htv_token."Date" = htv_link."Date"
 where
-  htv_token."Holders with Token Value > $1000" > 0
+  htv_token."Holders with Token Value <= $1000" > 0
 ORDER BY
   COALESCE(htv_token."Date", htv_uni."Date", htv_link."Date");
