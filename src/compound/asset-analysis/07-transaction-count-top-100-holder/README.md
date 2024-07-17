@@ -143,7 +143,7 @@ transaction_counts AS (
   )
 ```
 
-Finally shows the addresses, their token holdings in both tokens and USD, and their transaction count, ordered by transaction count.
+Finally shows the addresses, their token holdings in both tokens and USD, and their transaction count, ordered by holding usd.
 
 ```sql
 SELECT
@@ -155,12 +155,17 @@ FROM
   top_100_holders t
   LEFT JOIN transaction_counts tc ON t.address = tc.address
 ORDER BY
-  transaction_count DESC;
+  holding_usd DESC;
 ```
+
+**Hardcoded addresses**
+
+- [0x0000000000000000000000000000000000000000](https://etherscan.io/address/0x0000000000000000000000000000000000000000): This address is not owned by any user, is often associated with token burn & mint/genesis events and used as a generic null address
+- [0x000000000000000000000000000000000000dEaD](https://etherscan.io/address/0x000000000000000000000000000000000000dEaD): This address is commonly used by projects to burn tokens (reducing total supply).
 
 ## Tables used
 
-- dex.prices_latest (Curated dataset contains token addresses and their USD price. Made by @bernat. Present in the spellbook of dune analytics [Spellbook-Dex-PricesLatest](https://github.com/duneanalytics/spellbook/blob/main/models/dex/dex_prices_latest.sql))
+- prices.usd_latest (Curated dataset which contains latest prices table across blockchains. Made by @hildobby and @0xRob)
 - tokens.erc20 (Curated dataset for erc20 tokens with addresses, symbols and decimals. Origin unknown)
 - erc20\_{{Blockchain}}.evt_Transfer (Curated dataset of erc20 tokens' transactions. Origin unknown)
 
