@@ -4,7 +4,7 @@ This query calculates the total transaction count for the top 100 holders of the
 
 # Graph
 
-![assetDistributionOnDex](transaction-count.png)
+![transactionCount](transaction-count.png)
 
 # Relevance
 
@@ -15,24 +15,23 @@ This query calculates the total transaction count for the top 100 holders of the
 
 This query calculates the top 100 token holders by their token holdings, including their token values in USD. It also computes the total transaction count of these holders and joins this data for a comprehensive view of the top token holders and their activities.
 
-Price CTE calculates the average price of the specified token and retrieves its symbol and decimals
+Price CTE calculates the price of the specified token and retrieves its symbol and decimals
 
 ```sql
 price AS (
     SELECT
       symbol,
       decimals,
-      AVG(token_price_usd) AS price
+      price
     FROM
-      dex.prices_latest,
-      tokens.erc20
+      prices.usd_latest
     WHERE
-      token_address = {{token_address}}
-      AND contract_address = {{token_address}}
+      contract_address = {{token_address}}
       AND blockchain = '{{chain}}'
-    GROUP BY
-      1,
-      2
+    ORDER BY
+      minute DESC
+    LIMIT
+      1
   )
 ```
 
