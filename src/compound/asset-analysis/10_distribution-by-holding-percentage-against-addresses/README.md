@@ -16,7 +16,7 @@ Token distribution by holding % tells us how decentralized or centeralized the a
 
 - Investors: addresses holding less than 0.1% of the total supply represent retail investors. A large number of such addresses indicate broad adoption and support.
 - Whales: Addresses holding more than 1% of the total supply are considered whales. Monitoring whale activity can provide insights into potential market movements or strategic investments.
-- Institutional Investors: Addresses holding significant but not excessively large percentages (e.g., >1%) might represent institutional investors or large stakeholders.
+- Institutional Investors: Addresses holding significant but not excessively large percentages (e.g., >.5%) might represent institutional investors or large stakeholders.
 
 # Query Explanation
 
@@ -35,41 +35,50 @@ decimals_info_token AS (
   )
 ```
 
-Calculates the value of token transfers by normalizing them using the token's decimals. Includes both minting (transfers from the zero address) and burning (transfers to the zero address) events.
-
-```sql
-value_transfers_token AS (
-    SELECT
-      b.value / POWER(10, d.decimals) AS value
-    FROM
-      erc20_{{chain}}.evt_Transfer AS b
-      INNER JOIN {{chain}}.transactions AS tx ON tx.hash = b.evt_tx_hash
-      CROSS JOIN decimals_info_token d
-    WHERE
-      b.contract_address = {{token_address}}
-      AND b."from" = 0x0000000000000000000000000000000000000000
-    UNION ALL
-    SELECT
-      - d.value / POWER(10, e.decimals) AS value
-    FROM
-      erc20_{{chain}}.evt_Transfer AS d
-      INNER JOIN {{chain}}.transactions AS tx ON tx.hash = d.evt_tx_hash
-      CROSS JOIN decimals_info_token e
-    WHERE
-      d.contract_address = {{token_address}}
-      AND d."to" = 0x0000000000000000000000000000000000000000
-  )
-```
-
-Computes the total supply of the token by summing up all normalized transfer values.
+Computes the total supply of the token by summing up all transfer values.
 
 ```sql
 token_total_supply AS (
     SELECT
-      SUM(value) AS total_supply
+      sum(tokens / POWER(10, d.decimals)) as total_supply
     FROM
-      value_transfers_token
-  )
+      (
+        SELECT
+          wallet,
+          sum(amount) AS tokens
+        FROM
+          (
+            SELECT
+              "to" AS wallet,
+              contract_address,
+              SUM(cast(value as double)) AS amount
+            FROM
+              erc20_{{chain}}.evt_Transfer tr
+            WHERE
+              contract_address = {{token_address}}
+            GROUP BY
+              1,
+              2
+            UNION ALL
+            SELECT
+              "from" AS wallet,
+              contract_address,
+              - SUM(cast(value as double)) AS amount
+            FROM
+              erc20_{{chain}}.evt_Transfer tr
+            WHERE
+              contract_address = {{token_address}}
+            GROUP BY
+              1,
+              2
+          ) t
+        GROUP BY
+          1
+      ) a
+      CROSS JOIN decimals_info_token d
+    WHERE
+      tokens > 0
+  ),
 ```
 
 Aggregates daily token transfers, summing the amounts for each address and day.
@@ -190,32 +199,32 @@ token_holders_with_token_value AS (
       COUNT(
         CASE
           WHEN b.balance > 0
-          AND b.balance <= ts.total_supply * 0.000001 THEN b.address
+          AND b.balance <= ts.total_supply * 0.0001 THEN b.address
         END
-      ) AS "0-0.0001%",
+      ) AS "0-0.01%",
       COUNT(
         CASE
-          WHEN b.balance > ts.total_supply * 0.000001
+          WHEN b.balance > ts.total_supply * 0.0001
           AND b.balance <= ts.total_supply * 0.001 THEN b.address
         END
-      ) AS "0.0001-0.1%",
+      ) AS "0.01-0.1%",
       COUNT(
         CASE
           WHEN b.balance > ts.total_supply * 0.001
+          AND b.balance <= ts.total_supply * 0.0025 THEN b.address
+        END
+      ) AS "0.1-0.25%",
+      COUNT(
+        CASE
+          WHEN b.balance > ts.total_supply * 0.0025
           AND b.balance <= ts.total_supply * 0.005 THEN b.address
         END
-      ) AS "0.1-0.5%",
+      ) AS "0.25-0.5%",
       COUNT(
         CASE
-          WHEN b.balance > ts.total_supply * 0.005
-          AND b.balance <= ts.total_supply * 0.01 THEN b.address
+          WHEN b.balance > ts.total_supply * 0.005 THEN b.address
         END
-      ) AS "0.5-1%",
-      COUNT(
-        CASE
-          WHEN b.balance > ts.total_supply * 0.01 THEN b.address
-        END
-      ) AS ">1%"
+      ) AS ">.5%"
     FROM
       token_balance_all_days AS b
       CROSS JOIN token_total_supply ts
@@ -232,11 +241,11 @@ The final SELECT statement retrieves the date and counts of token holders for ea
 ```sql
 SELECT
   htv_token."Date" AS "Date",
-  COALESCE(htv_token."0-0.0001%", 0) AS "0-0.0001%",
-  COALESCE(htv_token."0.0001-0.1%", 0) AS "0.0001-0.1%",
-  COALESCE(htv_token."0.1-0.5%", 0) AS "0.1-0.5%",
-  COALESCE(htv_token."0.5-1%", 0) AS "0.5-1%",
-  COALESCE(htv_token.">1%", 0) AS ">1%"
+  COALESCE(htv_token."0-0.01%", 0) AS "0-0.01%",
+  COALESCE(htv_token."0.01-0.1%", 0) AS "0.01-0.1%",
+  COALESCE(htv_token."0.1-0.25%", 0) AS "0.1-0.25%",
+  COALESCE(htv_token."0.25-0.5%", 0) AS "0.25-0.5%",
+  COALESCE(htv_token.">.5%", 0) AS ">.5%"
 FROM
   token_holders_with_token_value htv_token
 ORDER BY

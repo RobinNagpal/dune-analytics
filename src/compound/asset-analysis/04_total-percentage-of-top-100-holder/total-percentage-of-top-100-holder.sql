@@ -3,17 +3,16 @@ WITH
     SELECT
       symbol,
       decimals,
-      AVG(token_price_usd) AS price
+      price
     FROM
-      dex.prices_latest,
-      tokens.erc20
+      prices.usd_latest
     WHERE
-      token_address = {{token_address}}
-      AND contract_address = {{token_address}}
+      contract_address = {{token_address}}
       AND blockchain = '{{chain}}'
-    GROUP BY
-      symbol,
-      decimals
+    ORDER BY
+      minute DESC
+    LIMIT
+      1
   ),
   raw AS (
     SELECT

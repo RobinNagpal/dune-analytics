@@ -7,8 +7,8 @@ The graph for number of holders over time displays the total number of unique ad
 
 ![totalNumberOfHolders](total-number-of-holders.png)
 ![numberOfHoldersOverTime](number-of-holders-over-time.png)
-![numberOfHoldersOverTimeWithGreaterTokenValueThan$100](number-of-holders-greater-than-$100-token-value.png)
-![numberOfHoldersOverTimeWithLessOrEqualTokenValueThan$100](number-of-holders-less-than-equal-$100-token-value.png)
+![numberOfHoldersOverTimeWithGreaterTokenValueThan$100](number-of-holders-greater-than-$1000-token-value.png)
+![numberOfHoldersOverTimeWithLessOrEqualTokenValueThan$100](number-of-holders-less-than-equal-$1000-token-value.png)
 
 # Relevance
 
