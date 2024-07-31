@@ -1,46 +1,58 @@
 WITH
-  dex_price AS (
+  price AS (
     SELECT
       symbol AS dex_symbol,
       decimals AS dex_decimals,
-      AVG(token_price_usd) AS dex_price
+      price AS dex_price
     FROM
-      dex.prices_latest,
-      tokens.erc20
-    WHERE
-      token_address = {{token_address}}
-      AND contract_address = {{token_address}}
-      AND blockchain = '{{chain}}'
-    GROUP BY
-      symbol,
-      decimals
-  ),
-  minted_supply AS (
-    SELECT
-      SUM(CAST(value AS DOUBLE)) AS minted_amount
-    FROM
-      erc20_{{chain}}.evt_Transfer
+      prices.usd_latest
     WHERE
       contract_address = {{token_address}}
-      AND "from" = 0x0000000000000000000000000000000000000000
-  ),
-  burned_supply AS (
-    SELECT
-      SUM(CAST(value AS DOUBLE)) AS burned_amount
-    FROM
-      erc20_{{chain}}.evt_Transfer
-    WHERE
-      contract_address = {{token_address}}
-      AND "to" IN (0x0000000000000000000000000000000000000000)
+      and blockchain = '{{chain}}'
+    ORDER BY
+      minute DESC
+    LIMIT
+      1
   ),
   total_supply AS (
     SELECT
-      (
-        COALESCE(m.minted_amount, 0) - COALESCE(b.burned_amount, 0)
-      ) AS net_supply
+      sum(tokens) as net_supply
     FROM
-      minted_supply m
-      CROSS JOIN burned_supply b
+      (
+        SELECT
+          wallet,
+          sum(amount) AS tokens
+        FROM
+          (
+            SELECT
+              "to" AS wallet,
+              contract_address,
+              SUM(cast(value as double)) AS amount
+            FROM
+              erc20_{{chain}}.evt_Transfer tr
+            WHERE
+              contract_address = {{token_address}}
+            GROUP BY
+              1,
+              2
+            UNION ALL
+            SELECT
+              "from" AS wallet,
+              contract_address,
+              - SUM(cast(value as double)) AS amount
+            FROM
+              erc20_{{chain}}.evt_Transfer tr
+            WHERE
+              contract_address = {{token_address}}
+            GROUP BY
+              1,
+              2
+          ) t
+        GROUP BY
+          1
+      ) a
+    WHERE
+      tokens > 0
   ),
   aggregated_data AS (
     SELECT
@@ -49,7 +61,7 @@ WITH
       d.dex_price AS price,
       t.net_supply
     FROM
-      dex_price d,
+      price d,
       total_supply t
   )
 SELECT

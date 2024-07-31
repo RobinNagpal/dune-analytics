@@ -29,46 +29,52 @@ decimals_info_token AS (
   )
 ```
 
-## Tokens Transers for minting/burning
-
-Calculates the value of token transfers by normalizing them using the token's decimals.
-Includes both minting (transfers from the zero address) and burning (transfers to the zero address) events.
-
-```sql
- value_transfers_token AS (
-    SELECT
-      b.value / POWER(10, d.decimals) AS value
-    FROM
-      erc20_{{chain}}.evt_Transfer AS b
-      INNER JOIN {{chain}}.transactions AS tx ON tx.hash = b.evt_tx_hash
-      CROSS JOIN decimals_info_token d
-    WHERE
-      b.contract_address = {{token_address}}
-      AND b."from" = 0x0000000000000000000000000000000000000000
-    UNION ALL
-    SELECT
-      - d.value / POWER(10, e.decimals) AS value
-    FROM
-      erc20_{{chain}}.evt_Transfer AS d
-      INNER JOIN {{chain}}.transactions AS tx ON tx.hash = d.evt_tx_hash
-      CROSS JOIN decimals_info_token e
-    WHERE
-      d.contract_address = {{token_address}}
-      AND d."to" = 0x0000000000000000000000000000000000000000
-  )
-```
-
 ## Total Supply
 
-Computes the total supply of the token by summing up all normalized transfer values.
+Computes the total supply of the token by summing up all transfer values.
 
 ```sql
 token_total_supply AS (
     SELECT
-      SUM(value) AS total_supply
+      sum(tokens / POWER(10, d.decimals)) as total_supply
     FROM
-      value_transfers_token
-  )
+      (
+        SELECT
+          wallet,
+          sum(amount) AS tokens
+        FROM
+          (
+            SELECT
+              "to" AS wallet,
+              contract_address,
+              SUM(cast(value as double)) AS amount
+            FROM
+              erc20_{{chain}}.evt_Transfer tr
+            WHERE
+              contract_address = {{token_address}}
+            GROUP BY
+              1,
+              2
+            UNION ALL
+            SELECT
+              "from" AS wallet,
+              contract_address,
+              - SUM(cast(value as double)) AS amount
+            FROM
+              erc20_{{chain}}.evt_Transfer tr
+            WHERE
+              contract_address = {{token_address}}
+            GROUP BY
+              1,
+              2
+          ) t
+        GROUP BY
+          1
+      ) a
+      CROSS JOIN decimals_info_token d
+    WHERE
+      tokens > 0
+  ),
 ```
 
 ## Number of tokens transferred in and out
@@ -246,10 +252,6 @@ FROM
 ORDER BY
   htv_token."Date";
 ```
-
-**Hardcoded addresses**
-
-- [0x0000000000000000000000000000000000000000](https://etherscan.io/address/0x0000000000000000000000000000000000000000): This address is not owned by any user, is often associated with token burn & mint/genesis events and used as a generic null address
 
 ## Tables used
 

@@ -7,32 +7,46 @@ WITH
     WHERE
       contract_address = {{token_address}}
   ),
-  value_transfers_token AS (
-    SELECT
-      b.value / POWER(10, d.decimals) AS value
-    FROM
-      erc20_{{chain}}.evt_Transfer AS b
-      INNER JOIN {{chain}}.transactions AS tx ON tx.hash = b.evt_tx_hash
-      CROSS JOIN decimals_info_token d
-    WHERE
-      b.contract_address = {{token_address}}
-      AND b."from" = 0x0000000000000000000000000000000000000000
-    UNION ALL
-    SELECT
-      - d.value / POWER(10, e.decimals) AS value
-    FROM
-      erc20_{{chain}}.evt_Transfer AS d
-      INNER JOIN {{chain}}.transactions AS tx ON tx.hash = d.evt_tx_hash
-      CROSS JOIN decimals_info_token e
-    WHERE
-      d.contract_address = {{token_address}}
-      AND d."to" = 0x0000000000000000000000000000000000000000
-  ),
   token_total_supply AS (
     SELECT
-      SUM(value) AS total_supply
+      sum(tokens / POWER(10, d.decimals)) as total_supply
     FROM
-      value_transfers_token
+      (
+        SELECT
+          wallet,
+          sum(amount) AS tokens
+        FROM
+          (
+            SELECT
+              "to" AS wallet,
+              contract_address,
+              SUM(cast(value as double)) AS amount
+            FROM
+              erc20_{{chain}}.evt_Transfer tr
+            WHERE
+              contract_address = {{token_address}}
+            GROUP BY
+              1,
+              2
+            UNION ALL
+            SELECT
+              "from" AS wallet,
+              contract_address,
+              - SUM(cast(value as double)) AS amount
+            FROM
+              erc20_{{chain}}.evt_Transfer tr
+            WHERE
+              contract_address = {{token_address}}
+            GROUP BY
+              1,
+              2
+          ) t
+        GROUP BY
+          1
+      ) a
+      CROSS JOIN decimals_info_token d
+    WHERE
+      tokens > 0
   ),
   token_transfers AS (
     SELECT
@@ -147,12 +161,12 @@ WITH
       COUNT(
         CASE
           WHEN b.balance > ts.total_supply * 0.0025
-          AND b.balance <= ts.total_supply * 0.05 THEN b.address
+          AND b.balance <= ts.total_supply * 0.005 THEN b.address
         END
       ) AS "0.25-0.5%",
       COUNT(
         CASE
-          WHEN b.balance > ts.total_supply * 0.05 THEN b.address
+          WHEN b.balance > ts.total_supply * 0.005 THEN b.address
         END
       ) AS ">.5%"
     FROM
@@ -167,7 +181,7 @@ WITH
 SELECT
   htv_token."Date" AS "Date",
   COALESCE(htv_token."0-0.01%", 0) AS "0-0.01%",
-  COALESCE(htv_token."0.0001-0.1%", 0) AS "0.01-0.1%",
+  COALESCE(htv_token."0.01-0.1%", 0) AS "0.01-0.1%",
   COALESCE(htv_token."0.1-0.25%", 0) AS "0.1-0.25%",
   COALESCE(htv_token."0.25-0.5%", 0) AS "0.25-0.5%",
   COALESCE(htv_token.">.5%", 0) AS ">.5%"
