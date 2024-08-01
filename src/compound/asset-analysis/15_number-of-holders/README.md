@@ -241,7 +241,7 @@ ORDER BY
 
 This query calculates the number of token holders over time, specifically for a given token, UNI, and LINK, who possess tokens with a value of $1000 or less based on daily prices.
 
-This query also uses the same CTE transfers, balance_with_gap_days, days and balance_all_days
+This query also uses the same CTE transfers, balances, balance_with_gap_days, days and balance_all_days
 
 Calculates the daily average price for each token
 
