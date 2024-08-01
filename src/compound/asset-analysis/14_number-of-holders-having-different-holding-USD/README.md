@@ -26,42 +26,47 @@ The query performs the following steps:
 
 ## Number of tokens transferred in and out
 
-Token transfers aggregates the token transfer amounts per address per day.
+Extracts daily token transfer events for the specified token, excluding self-transfers, and calculates daily net token balances for each address by summing incoming and outgoing transfer values.
 
 ```sql
-token_transfers AS (
+transfers AS (
+    SELECT
+      DATE_TRUNC('day', evt_block_time) AS DAY,
+      contract_address,
+      "from",
+      to,
+      value
+    FROM
+      erc20_{{chain}}.evt_Transfer
+    WHERE
+      contract_address = {{token_address}}
+      AND "from" <> to
+  ),
+  balances AS (
     SELECT
       DAY,
-      address,
-      token_address,
-      SUM(amount) AS amount
+      contract_address,
+      to AS address,
+      SUM(value) AS balance
     FROM
-      (
-        SELECT
-          DATE_TRUNC('day', evt_block_time) AS DAY,
-          "to" AS address,
-          tr.contract_address AS token_address,
-          CAST(value AS DECIMAL (38, 0)) AS amount
-        FROM
-          erc20_{{chain}}.evt_Transfer AS tr
-        WHERE
-          contract_address = {{token_address}}
-        UNION ALL
-        SELECT
-          DATE_TRUNC('day', evt_block_time) AS DAY,
-          "from" AS address,
-          tr.contract_address AS token_address,
-          (-1) * (CAST(value AS DECIMAL (38, 0))) AS amount
-        FROM
-          erc20_{{chain}}.evt_Transfer AS tr
-        WHERE
-          contract_address = {{token_address}}
-      ) AS t
+      transfers
     GROUP BY
-      1,
-      2,
-      3
-  )
+      DAY,
+      contract_address,
+      to
+    UNION ALL
+    SELECT
+      DAY,
+      contract_address,
+      "from" AS address,
+      - SUM(value) AS balance
+    FROM
+      transfers
+    GROUP BY
+      DAY,
+      contract_address,
+      "from"
+  ),
 ```
 
 ## Token Balances with Gap Days
@@ -73,7 +78,7 @@ token_balances_with_gap_days AS (
     SELECT
       t.day,
       address,
-      SUM(amount) OVER (
+      SUM(balance) OVER (
         PARTITION BY
           address
         ORDER BY
@@ -86,8 +91,8 @@ token_balances_with_gap_days AS (
           t.day
       ) AS next_day
     FROM
-      token_transfers AS t
-  )
+      balances AS t
+  ),
 ```
 
 ## Days Sequence
