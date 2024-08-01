@@ -168,7 +168,7 @@ ORDER BY
 
 This query calculates the number of Ethereum token holders over time, specifically for a given token, UNI, and LINK. The query also determines the number of holders who possess more than $1000 worth of tokens based on daily prices
 
-This query also uses the same CTE transfers, balance_with_gap_days, days and balance_all_days
+This query also uses the same CTE transfers, balances, balance_with_gap_days, days and balance_all_days
 
 Calculates the daily average price for each token
 
