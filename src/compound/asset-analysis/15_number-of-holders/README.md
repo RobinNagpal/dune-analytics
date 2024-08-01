@@ -35,111 +35,63 @@ This query calculates the number of unique holders of a given token on a given b
 - Filtering out addresses with net holdings less than 1 token.
 - Counting the number of unique addresses with net holdings of at least 1 token.
 
-Transfers CTE aggregates transfer amounts into and out of the token contract address on a daily basis
+Filters and retrieves transfer events for the specified token, excluding self-transfers
 
 ```sql
 transfers AS (
     SELECT
-      DAY,
-      address,
-      token_address,
-      SUM(amount) AS amount
+      evt_block_time,
+      contract_address,
+      "from",
+      to,
+      value
     FROM
-      (
-        SELECT
-          DATE_TRUNC('day', evt_block_time) AS DAY,
-          "to" AS address,
-          tr.contract_address AS token_address,
-          CAST(value AS DECIMAL (38, 0)) AS amount
-        FROM
-          erc20_{{chain}}.evt_Transfer AS tr
-        WHERE
-          contract_address = {{token_address}}
-        UNION ALL
-        SELECT
-          DATE_TRUNC('day', evt_block_time) AS DAY,
-          "from" AS address,
-          tr.contract_address AS token_address,
-          (-1) * (CAST(value AS DECIMAL (38, 0))) AS amount
-        FROM
-          erc20_{{chain}}.evt_Transfer AS tr
-        WHERE
-          contract_address = {{token_address}}
-      ) AS t
+      erc20_{{chain}}.evt_Transfer
+    WHERE
+      contract_address = {{token_address}}
+      AND "from" <> to
+  ),
+```
+
+Calculates the balance changes for each address by summing the incoming (to address) and outgoing (from address) token values
+
+```sql
+balances AS (
+    SELECT
+      contract_address,
+      to AS address,
+      SUM(value) AS balance
+    FROM
+      transfers
     GROUP BY
-      1,
-      2,
-      3
-  )
-```
-
-Computes the cumulative token balances for each address over time
-
-```sql
-balances_with_gap_days AS (
+      contract_address,
+      to
+    UNION ALL
     SELECT
-      t.day,
-      address,
-      SUM(amount) OVER (
-        PARTITION BY
-          address
-        ORDER BY
-          t.day
-      ) AS balance,
-      LEAD(DAY, 1, CURRENT_TIMESTAMP) OVER (
-        PARTITION BY
-          address
-        ORDER BY
-          t.day
-      ) AS next_day
+      contract_address,
+      "from" AS address,
+      - SUM(value) AS balance
     FROM
-      transfers AS t
-  )
-```
-
-Generates a sequence of days from the current date 
-
-```sql
-days AS (
-    SELECT
-      DAY
-    FROM
-      UNNEST (
-        SEQUENCE(
-          TRY_CAST(
-            DATE_TRUNC('day', CURRENT_TIMESTAMP) AS TIMESTAMP
-          ),
-          CAST(
-            TRY_CAST(
-              TRY_CAST(
-                TRY_CAST(DATE_TRUNC('day', CURRENT_TIMESTAMP) AS TIMESTAMP) AS TIMESTAMP
-              ) AS TIMESTAMP
-            ) AS TIMESTAMP
-          ),
-          INTERVAL '1' day
-        )
-      ) AS _u (DAY)
-  )
-```
-
-Calculates the cumulative token balances for all days up to the present
-
-```sql
-balance_all_days AS (
-    SELECT
-      d.day,
-      address,
-      SUM(balance / TRY_CAST(POWER(10, 0) AS DOUBLE)) AS balance
-    FROM
-      balances_with_gap_days AS b
-      INNER JOIN days AS d ON b.day <= d.day
-      AND d.day < b.next_day
+      transfers
     GROUP BY
-      1,
-      2
-    ORDER BY
-      1,
-      2
+      contract_address,
+      "from"
+  ),
+```
+
+Aggregates the balance changes to get the final balance for each address
+
+```sql
+final_balances AS (
+    SELECT
+      contract_address,
+      address,
+      SUM(balance) AS balance
+    FROM
+      balances
+    GROUP BY
+      contract_address,
+      address
   )
 ```
 
@@ -147,16 +99,15 @@ Counts the number of unique addresses (address) holding a positive token balance
 
 ```sql
 SELECT
-  COUNT(address) AS "Holders"
+  COUNT(*) AS distinct_holders
 FROM
-  balance_all_days AS b
+  final_balances
 WHERE
   balance > 0
 ```
 
 ### Tables used
 
-- tokens.erc20 (Curated dataset for erc20 tokens with addresses, symbols and decimals. Origin unknown)
 - erc20\_{{Blockchain}}.evt_Transfer (Curated dataset of erc20 tokens' transactions. Origin unknown)
 
 ### Alternative Choices
@@ -171,7 +122,7 @@ The query aims to calculate the cumulative number of unique token holders on a d
 - Aggregates the token transfers by day and address, converting the token value to a human-readable format.
 - Groups the results by day and address.
 
-This query also uses the same CTE transfers, balance_with_gap_days, days and balance_all_days
+This query also uses the same CTE transfers, balances, balance_with_gap_days, days and balance_all_days
 
 The token_holders_with_balance CTE calculates the number of unique addresses (holders) with a positive balance for each day from the token_balance_all_days data
 
@@ -217,7 +168,7 @@ ORDER BY
 
 This query calculates the number of Ethereum token holders over time, specifically for a given token, UNI, and LINK. The query also determines the number of holders who possess more than $1000 worth of tokens based on daily prices
 
-This query also uses the same CTE transfers, balance_with_gap_days, days and balance_all_days
+This query also uses the same CTE transfers, balances, balance_with_gap_days, days and balance_all_days
 
 Calculates the daily average price for each token
 
@@ -290,7 +241,7 @@ ORDER BY
 
 This query calculates the number of token holders over time, specifically for a given token, UNI, and LINK, who possess tokens with a value of $1000 or less based on daily prices.
 
-This query also uses the same CTE transfers, balance_with_gap_days, days and balance_all_days
+This query also uses the same CTE transfers, balances, balance_with_gap_days, days and balance_all_days
 
 Calculates the daily average price for each token
 

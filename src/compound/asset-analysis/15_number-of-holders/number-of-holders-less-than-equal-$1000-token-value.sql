@@ -1,108 +1,123 @@
 WITH
   token_transfers AS (
     SELECT
-      DAY,
-      address,
-      token_address,
-      SUM(amount) AS amount
+      DATE_TRUNC('day', evt_block_time) AS DAY,
+      contract_address,
+      "from",
+      to,
+      value
     FROM
-      (
-        SELECT
-          DATE_TRUNC('day', evt_block_time) AS DAY,
-          "to" AS address,
-          tr.contract_address AS token_address,
-          CAST(value AS DECIMAL (38, 0)) AS amount
-        FROM
-          erc20_{{chain}}.evt_Transfer AS tr
-        WHERE
-          contract_address = {{token_address}}
-        UNION ALL
-        SELECT
-          DATE_TRUNC('day', evt_block_time) AS DAY,
-          "from" AS address,
-          tr.contract_address AS token_address,
-          (-1) * (CAST(value AS DECIMAL (38, 0))) AS amount
-        FROM
-          erc20_{{chain}}.evt_Transfer AS tr
-        WHERE
-          contract_address = {{token_address}}
-      ) AS t
+      erc20_{{chain}}.evt_Transfer
+    WHERE
+      contract_address = {{token_address}}
+      AND "from" <> to
+  ),
+  token_balances AS (
+    SELECT
+      DAY,
+      contract_address,
+      to AS address,
+      SUM(value) AS balance
+    FROM
+      token_transfers
     GROUP BY
-      1,
-      2,
-      3
+      DAY,
+      contract_address,
+      to
+    UNION ALL
+    SELECT
+      DAY,
+      contract_address,
+      "from" AS address,
+      - SUM(value) AS balance
+    FROM
+      token_transfers
+    GROUP BY
+      DAY,
+      contract_address,
+      "from"
   ),
   uni_transfers AS (
     SELECT
-      DAY,
-      address,
-      token_address,
-      SUM(amount) AS amount
+      DATE_TRUNC('day', evt_block_time) AS DAY,
+      contract_address,
+      "from",
+      to,
+      value
     FROM
-      (
-        SELECT
-          DATE_TRUNC('day', evt_block_time) AS DAY,
-          "to" AS address,
-          tr.contract_address AS token_address,
-          CAST(value AS DECIMAL (38, 0)) AS amount
-        FROM
-          erc20_{{chain}}.evt_Transfer AS tr
-        WHERE
-          contract_address = {{reference_token1}}
-        UNION ALL
-        SELECT
-          DATE_TRUNC('day', evt_block_time) AS DAY,
-          "from" AS address,
-          tr.contract_address AS token_address,
-          (-1) * (CAST(value AS DECIMAL (38, 0))) AS amount
-        FROM
-          erc20_{{chain}}.evt_Transfer AS tr
-        WHERE
-          contract_address = {{reference_token1}}
-      ) AS t
+      erc20_{{chain}}.evt_Transfer
+    WHERE
+      contract_address = {{reference_token1}}
+      AND "from" <> to
+  ),
+  uni_balances AS (
+    SELECT
+      DAY,
+      contract_address,
+      to AS address,
+      SUM(value) AS balance
+    FROM
+      uni_transfers
     GROUP BY
-      1,
-      2,
-      3
+      DAY,
+      contract_address,
+      to
+    UNION ALL
+    SELECT
+      DAY,
+      contract_address,
+      "from" AS address,
+      - SUM(value) AS balance
+    FROM
+      uni_transfers
+    GROUP BY
+      DAY,
+      contract_address,
+      "from"
   ),
   link_transfers AS (
     SELECT
-      DAY,
-      address,
-      token_address,
-      SUM(amount) AS amount
+      DATE_TRUNC('day', evt_block_time) AS DAY,
+      contract_address,
+      "from",
+      to,
+      value
     FROM
-      (
-        SELECT
-          DATE_TRUNC('day', evt_block_time) AS DAY,
-          "to" AS address,
-          tr.contract_address AS token_address,
-          CAST(value AS DECIMAL (38, 0)) AS amount
-        FROM
-          erc20_{{chain}}.evt_Transfer AS tr
-        WHERE
-          contract_address = {{reference_token2}}
-        UNION ALL
-        SELECT
-          DATE_TRUNC('day', evt_block_time) AS DAY,
-          "from" AS address,
-          tr.contract_address AS token_address,
-          (-1) * (CAST(value AS DECIMAL (38, 0))) AS amount
-        FROM
-          erc20_{{chain}}.evt_Transfer AS tr
-        WHERE
-          contract_address = {{reference_token2}}
-      ) AS t
+      erc20_{{chain}}.evt_Transfer
+    WHERE
+      contract_address = {{reference_token2}}
+      AND "from" <> to
+  ),
+  link_balances AS (
+    SELECT
+      DAY,
+      contract_address,
+      to AS address,
+      SUM(value) AS balance
+    FROM
+      link_transfers
     GROUP BY
-      1,
-      2,
-      3
+      DAY,
+      contract_address,
+      to
+    UNION ALL
+    SELECT
+      DAY,
+      contract_address,
+      "from" AS address,
+      - SUM(value) AS balance
+    FROM
+      link_transfers
+    GROUP BY
+      DAY,
+      contract_address,
+      "from"
   ),
   token_balances_with_gap_days AS (
     SELECT
       t.day,
       address,
-      SUM(amount) OVER (
+      SUM(balance) OVER (
         PARTITION BY
           address
         ORDER BY
@@ -115,13 +130,13 @@ WITH
           t.day
       ) AS next_day
     FROM
-      token_transfers AS t
+      token_balances AS t
   ),
   uni_balances_with_gap_days AS (
     SELECT
       t.day,
       address,
-      SUM(amount) OVER (
+      SUM(balance) OVER (
         PARTITION BY
           address
         ORDER BY
@@ -134,13 +149,13 @@ WITH
           t.day
       ) AS next_day
     FROM
-      uni_transfers AS t
+      uni_balances AS t
   ),
   link_balances_with_gap_days AS (
     SELECT
       t.day,
       address,
-      SUM(amount) OVER (
+      SUM(balance) OVER (
         PARTITION BY
           address
         ORDER BY
@@ -153,7 +168,7 @@ WITH
           t.day
       ) AS next_day
     FROM
-      link_transfers AS t
+      link_balances AS t
   ),
   days AS (
     SELECT
