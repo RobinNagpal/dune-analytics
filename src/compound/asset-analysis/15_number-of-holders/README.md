@@ -122,7 +122,7 @@ The query aims to calculate the cumulative number of unique token holders on a d
 - Aggregates the token transfers by day and address, converting the token value to a human-readable format.
 - Groups the results by day and address.
 
-This query also uses the same CTE transfers, balance_with_gap_days, days and balance_all_days
+This query also uses the same CTE transfers, balances, balance_with_gap_days, days and balance_all_days
 
 The token_holders_with_balance CTE calculates the number of unique addresses (holders) with a positive balance for each day from the token_balance_all_days data
 
