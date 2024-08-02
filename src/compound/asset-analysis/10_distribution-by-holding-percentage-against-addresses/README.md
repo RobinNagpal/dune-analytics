@@ -209,32 +209,32 @@ token_holders_with_token_value AS (
       COUNT(
         CASE
           WHEN b.balance > 0
-          AND b.balance <= ts.total_supply * 0.0001 THEN b.address
+          AND b.balance <= ts.total_supply * 0.000000025 THEN b.address
         END
-      ) AS "0-0.01%",
+      ) AS "0-0.0000025%",
       COUNT(
         CASE
-          WHEN b.balance > ts.total_supply * 0.0001
-          AND b.balance <= ts.total_supply * 0.001 THEN b.address
+          WHEN b.balance > ts.total_supply * 0.000000025
+          AND b.balance <= ts.total_supply * 0.00000025 THEN b.address
         END
-      ) AS "0.01-0.1%",
+      ) AS "0.0000025-0.000025%",
       COUNT(
         CASE
-          WHEN b.balance > ts.total_supply * 0.001
-          AND b.balance <= ts.total_supply * 0.0025 THEN b.address
+          WHEN b.balance > ts.total_supply * 0.00000025
+          AND b.balance <= ts.total_supply * 0.000005 THEN b.address
         END
-      ) AS "0.1-0.25%",
+      ) AS "0.000025-0.0005%",
       COUNT(
         CASE
-          WHEN b.balance > ts.total_supply * 0.0025
-          AND b.balance <= ts.total_supply * 0.005 THEN b.address
+          WHEN b.balance > ts.total_supply * 0.000005 
+          AND b.balance <= ts.total_supply * 0.00005 THEN b.address
         END
-      ) AS "0.25-0.5%",
+      ) AS "0.0005-0.005%",
       COUNT(
         CASE
-          WHEN b.balance > ts.total_supply * 0.005 THEN b.address
+          WHEN b.balance > ts.total_supply * 0.00005 THEN b.address
         END
-      ) AS ">.5%"
+      ) AS ">.005%"
     FROM
       token_balance_all_days AS b
       CROSS JOIN token_total_supply ts
@@ -251,20 +251,16 @@ The final SELECT statement retrieves the date and counts of token holders for ea
 ```sql
 SELECT
   htv_token."Date" AS "Date",
-  COALESCE(htv_token."0-0.01%", 0) AS "0-0.01%",
-  COALESCE(htv_token."0.01-0.1%", 0) AS "0.01-0.1%",
-  COALESCE(htv_token."0.1-0.25%", 0) AS "0.1-0.25%",
-  COALESCE(htv_token."0.25-0.5%", 0) AS "0.25-0.5%",
-  COALESCE(htv_token.">.5%", 0) AS ">.5%"
+  COALESCE(htv_token."0-0.0000025%", 0) AS "0-0.0000025%",
+  COALESCE(htv_token."0.0000025-0.000025%", 0) AS "0.0000025-0.000025%",
+  COALESCE(htv_token."0.000025-0.0005%", 0) AS "0.000025-0.0005%",
+  COALESCE(htv_token."0.0005-0.005%", 0) AS "0.0005-0.005%",
+  COALESCE(htv_token.">.005%", 0) AS ">.005%"
 FROM
   token_holders_with_token_value htv_token
 ORDER BY
   htv_token."Date";
 ```
-
-**Hardcoded addresses**
-
-- [0x0000000000000000000000000000000000000000](https://etherscan.io/address/0x0000000000000000000000000000000000000000): This address is not owned by any user, is often associated with token burn & mint/genesis events and used as a generic null address
 
 ## Tables used
 
