@@ -34,6 +34,51 @@ price AS (
   ),
 ```
 
+The total_supply CTE calculates the net token supply by summing positive balances of tokens across all wallets, based on transfer events.
+
+```sql
+total_supply AS (
+    SELECT
+      sum(tokens) as net_supply
+    FROM
+      (
+        SELECT
+          wallet,
+          sum(amount) AS tokens
+        FROM
+          (
+            SELECT
+              "to" AS wallet,
+              contract_address,
+              SUM(cast(value as double)) AS amount
+            FROM
+              erc20_{{chain}}.evt_Transfer tr
+            WHERE
+              contract_address = {{token_address}}
+            GROUP BY
+              1,
+              2
+            UNION ALL
+            SELECT
+              "from" AS wallet,
+              contract_address,
+              - SUM(cast(value as double)) AS amount
+            FROM
+              erc20_{{chain}}.evt_Transfer tr
+            WHERE
+              contract_address = {{token_address}}
+            GROUP BY
+              1,
+              2
+          ) t
+        GROUP BY
+          1
+      ) a
+    WHERE
+      tokens > 0
+  ),
+```
+
 Raw CTE calculates the net amount of tokens held by each address by summing up incoming and outgoing transfers
 
 ```sql

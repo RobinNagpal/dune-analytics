@@ -89,6 +89,37 @@ WITH
       CROSS JOIN decimals_info_token d
     WHERE
       tokens > 0
+  ),
+  dex_cex_addresses AS (
+    SELECT
+      address AS address
+    FROM
+      cex.addresses
+    WHERE
+      blockchain = '{{chain}}'
+    UNION ALL
+    SELECT
+      address
+    FROM
+      (
+        SELECT
+          address AS address
+        FROM
+          dex.addresses
+        WHERE
+          blockchain = '{{chain}}'
+        GROUP BY
+          1
+        UNION ALL
+        SELECT
+          project_contract_address AS address
+        FROM
+          dex.trades
+        WHERE
+          blockchain = '{{chain}}'
+        GROUP BY
+          1
+      )
   )
 SELECT
   range,
@@ -110,7 +141,23 @@ FROM
       wb.balance
     FROM
       wallet_balances wb
+      LEFT JOIN contracts.contract_mapping c ON wallet = c.contract_address
       CROSS JOIN token_total_supply ts
+    WHERE
+      wallet NOT IN (
+        0x0000000000000000000000000000000000000000,
+        0x000000000000000000000000000000000000dEaD
+      )
+      AND (
+        c.contract_address IS NULL
+        OR c.contract_project = 'Gnosis Safe'
+      )
+      AND wallet not in (
+        select distinct
+          address
+        from
+          dex_cex_addresses
+      )
   ) grouped_balances
 GROUP BY
   range

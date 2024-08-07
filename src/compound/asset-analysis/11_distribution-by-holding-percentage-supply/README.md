@@ -126,7 +126,43 @@ wallet_balances AS (
   )
 ```
 
-The last SELECT statement groups wallet balances into defined percentage ranges of the total supply, sums the balances within each range, and orders the results by range.
+This CTE combines all unique addresses from centralized exchange (CEX) and decentralized exchange (DEX) sources for the specified blockchain.
+
+```sql
+dex_cex_addresses AS (
+    SELECT
+      address AS address
+    FROM
+      cex.addresses
+    WHERE
+      blockchain = '{{chain}}'
+    UNION ALL
+    SELECT
+      address
+    FROM
+      (
+        SELECT
+          address AS address
+        FROM
+          dex.addresses
+        WHERE
+          blockchain = '{{chain}}'
+        GROUP BY
+          1
+        UNION ALL
+        SELECT
+          project_contract_address AS address
+        FROM
+          dex.trades
+        WHERE
+          blockchain = '{{chain}}'
+        GROUP BY
+          1
+      )
+  )
+```
+
+The query categorizes token balances into specified percentage ranges of the total supply, excluding certain addresses, and calculates the total balance for each range.
 
 ```sql
 SELECT
@@ -149,7 +185,23 @@ FROM
       wb.balance
     FROM
       wallet_balances wb
+      LEFT JOIN contracts.contract_mapping c ON wallet = c.contract_address
       CROSS JOIN token_total_supply ts
+    WHERE
+      wallet NOT IN (
+        0x0000000000000000000000000000000000000000,
+        0x000000000000000000000000000000000000dEaD
+      )
+      AND (
+        c.contract_address IS NULL
+        OR c.contract_project = 'Gnosis Safe'
+      )
+      AND wallet not in (
+        select distinct
+          address
+        from
+          dex_cex_addresses
+      )
   ) grouped_balances
 GROUP BY
   range

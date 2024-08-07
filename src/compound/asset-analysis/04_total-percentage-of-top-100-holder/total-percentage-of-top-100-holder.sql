@@ -14,6 +14,46 @@ WITH
     LIMIT
       1
   ),
+  total_supply AS (
+    SELECT
+      sum(tokens) as net_supply
+    FROM
+      (
+        SELECT
+          wallet,
+          sum(amount) AS tokens
+        FROM
+          (
+            SELECT
+              "to" AS wallet,
+              contract_address,
+              SUM(cast(value as double)) AS amount
+            FROM
+              erc20_{{chain}}.evt_Transfer tr
+            WHERE
+              contract_address = {{token_address}}
+            GROUP BY
+              1,
+              2
+            UNION ALL
+            SELECT
+              "from" AS wallet,
+              contract_address,
+              - SUM(cast(value as double)) AS amount
+            FROM
+              erc20_{{chain}}.evt_Transfer tr
+            WHERE
+              contract_address = {{token_address}}
+            GROUP BY
+              1,
+              2
+          ) t
+        GROUP BY
+          1
+      ) a
+    WHERE
+      tokens > 0
+  ),
   raw AS (
     SELECT
       "from" as address,
@@ -115,7 +155,7 @@ WITH
               select distinct
                 address
               from
-                labels.cex_ethereum
+                labels.cex_{{chain}}
             ) then 'CEX'
             when address in (
               select distinct
@@ -153,14 +193,14 @@ WITH
           SUM(amount * price / POWER(10, decimals)) AS value,
           SUM(amount) / (
             SELECT
-              SUM(amount)
+              SUM(net_supply)
             FROM
-              raw
-            WHERE
-              address NOT IN (
-                0x0000000000000000000000000000000000000000,
-                0x000000000000000000000000000000000000dEaD
-              )
+              total_supply
+            -- WHERE
+            --   address NOT IN (
+            --     0x0000000000000000000000000000000000000000,
+            --     0x000000000000000000000000000000000000dEaD
+            --   )
           ) AS percent_holdings
         FROM
           price,

@@ -52,6 +52,37 @@ holdings AS (
         decimals,
         price
 ),
+dex_cex_addresses AS (
+    SELECT
+      address AS address
+    FROM
+      cex.addresses
+    WHERE
+      blockchain = '{{chain}}'
+    UNION ALL
+    SELECT
+      address
+    FROM
+      (
+        SELECT
+          address AS address
+        FROM
+          dex.addresses
+        WHERE
+          blockchain = '{{chain}}'
+        GROUP BY
+          1
+        UNION ALL
+        SELECT
+          project_contract_address AS address
+        FROM
+          dex.trades
+        WHERE
+          blockchain = '{{chain}}'
+        GROUP BY
+          1
+      )
+  ),
 categorized_holdings AS (
     SELECT
         address,
@@ -68,7 +99,19 @@ categorized_holdings AS (
         END AS holding_category
     FROM
         holdings
+        LEFT JOIN contracts.contract_mapping c ON address = c.contract_address
     WHERE
+        address NOT IN (
+            0x0000000000000000000000000000000000000000,
+            0x000000000000000000000000000000000000dEaD
+          )
+          AND (
+            c.contract_address IS NULL
+            OR c.contract_project = 'Gnosis Safe'
+          ) AND address NOT IN (select distinct
+          address
+        from
+          dex_cex_addresses) AND
         holding_usd > 0
 )
 SELECT
