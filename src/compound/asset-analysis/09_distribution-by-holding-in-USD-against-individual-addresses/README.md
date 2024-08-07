@@ -1,6 +1,6 @@
 # About
 
-The graph shows number of addresses that falls in each defined range (0 - $100, $100 - $1000, $1000 - $5,000, $5000 - $10,000, $10,000 - $50,000 , $50,000 - $250,000 , 250,000+). These ranges show USD total of the holdings for an address.
+The graph shows number of individual addresses that falls in each defined range (0 - $100, $100 - $1000, $1000 - $5,000, $5000 - $10,000, $10,000 - $50,000 , $50,000 - $250,000 , 250,000+). These ranges show USD total of the holdings for an address.
 
 # Graph
 
@@ -87,7 +87,43 @@ holdings AS (
 )
 ```
 
-Categorized holdings CTE categorizes the holdings into defined ranges, where holding is greater than 0. It uses a `CASE` statement to assign a category to each address based on their total holding value in USD.
+The dex_cex_addresses CTE combines addresses from CEX and DEX tables for a specified blockchain into a single list.
+
+```sql
+dex_cex_addresses AS (
+    SELECT
+      address AS address
+    FROM
+      cex.addresses
+    WHERE
+      blockchain = '{{chain}}'
+    UNION ALL
+    SELECT
+      address
+    FROM
+      (
+        SELECT
+          address AS address
+        FROM
+          dex.addresses
+        WHERE
+          blockchain = '{{chain}}'
+        GROUP BY
+          1
+        UNION ALL
+        SELECT
+          project_contract_address AS address
+        FROM
+          dex.trades
+        WHERE
+          blockchain = '{{chain}}'
+        GROUP BY
+          1
+      )
+  ),
+```
+
+Categorized holdings CTE categorizes the holdings into defined ranges, where holding is greater than 0. It uses a `CASE` statement to assign a category to each address based on their total holding value in USD excluding specific addresses and DEX/CEX addresses, and filtering for non-zero holdings.
 
 ```sql
 categorized_holdings AS (
@@ -106,7 +142,19 @@ categorized_holdings AS (
         END AS holding_category
     FROM
         holdings
+        LEFT JOIN contracts.contract_mapping c ON address = c.contract_address
     WHERE
+        address NOT IN (
+            0x0000000000000000000000000000000000000000,
+            0x000000000000000000000000000000000000dEaD
+          )
+          AND (
+            c.contract_address IS NULL
+            OR c.contract_project = 'Gnosis Safe'
+          ) AND address NOT IN (select distinct
+          address
+        from
+          dex_cex_addresses) AND
         holding_usd > 0
 )
 ```

@@ -1,13 +1,44 @@
-WITH
-  decimals_info_token AS (
+# About
+
+This graph shows how the total supply of a token is distributed among the individual token holders
+
+# Graph
+
+![distributionByHoldingPercentage](distribution-by-holding-percentage.png)
+
+# Relevance
+
+## Asset decentralization
+
+Token distribution by holding % tells us how decentralized or centeralized the asset is. A more decentralized distribution, in which large number of addresses hold smaller percentages of the total supply, suggests a good ecosystem. On the other hand, a distribution, where a few addresses hold large portions of the supply, indicates market manipulation, liquidity issues or governance issues
+
+## Holder Categories
+
+- Investors: addresses holding less than 0.1% of the total supply represent retail investors. A large number of such addresses indicate broad adoption and support.
+- Whales: Addresses holding more than 1% of the total supply are considered whales. Monitoring whale activity can provide insights into potential market movements or strategic investments.
+- Institutional Investors: Addresses holding significant but not excessively large percentages (e.g., >.5%) might represent institutional investors or large stakeholders.
+
+# Query Explanation
+
+This query calculates the distribution of token holdings by categorizing addresses into various percentage ranges. It considers the price and decimals of the token, sums the incoming and outgoing transfers to determine net holdings. The query then categorizes these holdings into ranges, counts the number of addresses in each range, and sums the total holdings for each range.
+
+Retrieves the number of decimals for the specified token.
+
+```sql
+decimals_info_token AS (
     SELECT
       decimals
     FROM
       tokens.erc20
     WHERE
       contract_address = {{token_address}}
-  ),
-  token_total_supply AS (
+  )
+```
+
+Computes the total supply of the token by summing up all transfer values.
+
+```sql
+token_total_supply AS (
     SELECT
       sum(tokens / POWER(10, d.decimals)) as total_supply
     FROM
@@ -48,7 +79,12 @@ WITH
     WHERE
       tokens > 0
   ),
-  transfers AS (
+```
+
+This CTE selects transfer events for the specified token, excluding self-transfers.
+
+```sql
+transfers AS (
     SELECT
       DATE_TRUNC('day', evt_block_time) AS DAY,
       contract_address,
@@ -61,7 +97,12 @@ WITH
       contract_address = {{token_address}}
       AND "from" <> to
   ),
-  balances AS (
+```
+
+This CTE calculates daily balances for each address by summing up incoming (to address) and outgoing (from address) token values.
+
+```sql
+balances AS (
     SELECT
       DAY,
       contract_address,
@@ -86,7 +127,12 @@ WITH
       contract_address,
       "from"
   ),
-  token_balances_with_gap_days AS (
+```
+
+Calculates the running balance for each address over time.
+
+```sql
+token_balances_with_gap_days AS (
     SELECT
       t.day,
       address,
@@ -105,7 +151,12 @@ WITH
     FROM
       balances AS t
   ),
-  days AS (
+```
+
+Generates a sequence of days for the current date.
+
+```sql
+days AS (
     SELECT
       DAY
     FROM
@@ -122,8 +173,13 @@ WITH
           INTERVAL '1' day
         )
       ) AS _u (DAY)
-  ),
-  token_balance_all_days AS (
+  )
+```
+
+Computes the balance for each address for each day, filling in the days between transfers.
+
+```sql
+token_balance_all_days AS (
     SELECT
       d.day,
       address,
@@ -141,8 +197,49 @@ WITH
     ORDER BY
       1,
       2
+  )
+```
+
+The dex_cex_addresses CTE combines addresses from CEX and DEX tables for a specified blockchain into a single list.
+
+```sql
+dex_cex_addresses AS (
+    SELECT
+      address AS address
+    FROM
+      cex.addresses
+    WHERE
+      blockchain = '{{chain}}'
+    UNION ALL
+    SELECT
+      address
+    FROM
+      (
+        SELECT
+          address AS address
+        FROM
+          dex.addresses
+        WHERE
+          blockchain = '{{chain}}'
+        GROUP BY
+          1
+        UNION ALL
+        SELECT
+          project_contract_address AS address
+        FROM
+          dex.trades
+        WHERE
+          blockchain = '{{chain}}'
+        GROUP BY
+          1
+      )
   ),
-  token_holders_with_token_value AS (
+```
+
+This CTE categorizes token holders by their balance as a percentage of total supply, excluding specific addresses, and counts the number of holders in each category for each day.
+
+```sql
+token_holders_with_token_value AS (
     SELECT
       b.day AS "Date",
       COUNT(
@@ -165,7 +262,7 @@ WITH
       ) AS "0.000025-0.0005%",
       COUNT(
         CASE
-          WHEN b.balance > ts.total_supply * 0.000005 
+          WHEN b.balance > ts.total_supply * 0.000005
           AND b.balance <= ts.total_supply * 0.00005 THEN b.address
         END
       ) AS "0.0005-0.005%",
@@ -176,13 +273,33 @@ WITH
       ) AS ">.005%"
     FROM
       token_balance_all_days AS b
+      LEFT JOIN contracts.contract_mapping c ON address = c.contract_address
       CROSS JOIN token_total_supply ts
     WHERE
-      balance > 0
+      address NOT IN (
+        0x0000000000000000000000000000000000000000,
+        0x000000000000000000000000000000000000dEaD
+      )
+      AND (
+        c.contract_address IS NULL
+        OR c.contract_project = 'Gnosis Safe'
+      )
+      AND address not in (
+        select distinct
+          address
+        from
+          dex_cex_addresses
+      )
+      AND balance > 0
     GROUP BY
       b.day,
       ts.total_supply
   )
+```
+
+The final SELECT statement retrieves the date and counts of token holders for each range of the total supply.
+
+```sql
 SELECT
   htv_token."Date" AS "Date",
   COALESCE(htv_token."0-0.0000025%", 0) AS "0-0.0000025%",
@@ -194,3 +311,13 @@ FROM
   token_holders_with_token_value htv_token
 ORDER BY
   htv_token."Date";
+```
+
+## Tables used
+
+- tokens.erc20 (Curated dataset for erc20 tokens with addresses, symbols and decimals. Origin unknown)
+- erc20\_{{Blockchain}}.evt_Transfer (Curated dataset of erc20 tokens' transactions. Origin unknown)
+
+## Alternative Choices
+
+
