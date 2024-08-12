@@ -142,54 +142,100 @@ WITH
       1,
       2
   ),
+  dex_cex_addresses AS (
+    SELECT
+      address AS address
+    FROM
+      cex.addresses
+    WHERE
+      blockchain = '{{chain}}'
+    UNION ALL
+    SELECT
+      address
+    FROM
+      (
+        SELECT
+          address AS address
+        FROM
+          dex.addresses
+        WHERE
+          blockchain = '{{chain}}'
+        GROUP BY
+          1
+        UNION ALL
+        SELECT
+          project_contract_address AS address
+        FROM
+          dex.trades
+        WHERE
+          blockchain = '{{chain}}'
+        GROUP BY
+          1
+      )
+  ),
   token_holders_with_token_value AS (
     SELECT
       b.day AS "Date",
       COUNT(
         CASE
           WHEN b.balance > 0
-          AND b.balance <= ts.total_supply * 0.0001 THEN b.address
+          AND b.balance <= ts.total_supply * 0.000000025 THEN b.address
         END
-      ) AS "0-0.01%",
+      ) AS "0-0.0000025%",
       COUNT(
         CASE
-          WHEN b.balance > ts.total_supply * 0.0001
-          AND b.balance <= ts.total_supply * 0.001 THEN b.address
+          WHEN b.balance > ts.total_supply * 0.000000025
+          AND b.balance <= ts.total_supply * 0.00000025 THEN b.address
         END
-      ) AS "0.01-0.1%",
+      ) AS "0.0000025-0.000025%",
       COUNT(
         CASE
-          WHEN b.balance > ts.total_supply * 0.001
-          AND b.balance <= ts.total_supply * 0.0025 THEN b.address
+          WHEN b.balance > ts.total_supply * 0.00000025
+          AND b.balance <= ts.total_supply * 0.000005 THEN b.address
         END
-      ) AS "0.1-0.25%",
+      ) AS "0.000025-0.0005%",
       COUNT(
         CASE
-          WHEN b.balance > ts.total_supply * 0.0025
-          AND b.balance <= ts.total_supply * 0.005 THEN b.address
+          WHEN b.balance > ts.total_supply * 0.000005
+          AND b.balance <= ts.total_supply * 0.00005 THEN b.address
         END
-      ) AS "0.25-0.5%",
+      ) AS "0.0005-0.005%",
       COUNT(
         CASE
-          WHEN b.balance > ts.total_supply * 0.005 THEN b.address
+          WHEN b.balance > ts.total_supply * 0.00005 THEN b.address
         END
-      ) AS ">.5%"
+      ) AS ">.005%"
     FROM
       token_balance_all_days AS b
+      LEFT JOIN contracts.contract_mapping c ON address = c.contract_address
       CROSS JOIN token_total_supply ts
     WHERE
-      balance > 0
+      address NOT IN (
+        0x0000000000000000000000000000000000000000,
+        0x000000000000000000000000000000000000dEaD
+      )
+      AND (
+        c.contract_address IS NULL
+        OR c.contract_project = 'Gnosis Safe'
+      )
+      AND address not in (
+        select distinct
+          address
+        from
+          dex_cex_addresses
+      )
+      AND balance > 0
     GROUP BY
       b.day,
       ts.total_supply
   )
 SELECT
   htv_token."Date" AS "Date",
-  COALESCE(htv_token."0-0.01%", 0) AS "0-0.01%",
-  COALESCE(htv_token."0.01-0.1%", 0) AS "0.01-0.1%",
-  COALESCE(htv_token."0.1-0.25%", 0) AS "0.1-0.25%",
-  COALESCE(htv_token."0.25-0.5%", 0) AS "0.25-0.5%",
-  COALESCE(htv_token.">.5%", 0) AS ">.5%"
+  COALESCE(htv_token."0-0.0000025%", 0) AS "0-0.0000025%",
+  COALESCE(htv_token."0.0000025-0.000025%", 0) AS "0.0000025-0.000025%",
+  COALESCE(htv_token."0.000025-0.0005%", 0) AS "0.000025-0.0005%",
+  COALESCE(htv_token."0.0005-0.005%", 0) AS "0.0005-0.005%",
+  COALESCE(htv_token.">.005%", 0) AS ">.005%"
 FROM
   token_holders_with_token_value htv_token
 ORDER BY
