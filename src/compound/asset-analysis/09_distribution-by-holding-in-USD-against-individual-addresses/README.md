@@ -1,6 +1,6 @@
 # About
 
-The graph shows number of individual addresses that falls in each defined range (0 - $100, $100 - $1000, $1000 - $5,000, $5000 - $10,000, $10,000 - $50,000 , $50,000 - $250,000 , 250,000+). These ranges show USD total of the holdings for an address.
+The graph shows number of individual addresses that falls in each defined range (0 - $2, $2-$100, $100 - $1000, $1000 - $5,000, $5000 - $10,000, $10,000 - $50,000 , $50,000 - $250,000 , 250,000+). These ranges show USD total of the holdings for an address.
 
 # Graph
 
@@ -132,7 +132,8 @@ categorized_holdings AS (
         holding,
         holding_usd,
         CASE
-            WHEN holding_usd BETWEEN 0 AND 100 THEN '0-$100'
+            WHEN holding_usd BETWEEN 0 AND 2 THEN '0-$2'
+            WHEN holding_usd > 2 AND holding_usd <= 100 THEN '$2-$100'
             WHEN holding_usd > 100 AND holding_usd <= 1000 THEN '$100-$1K'
             WHEN holding_usd > 1000 AND holding_usd <= 5000 THEN '$1K-$5K'
             WHEN holding_usd > 5000 AND holding_usd <= 10000 THEN '$5K-$10K'
@@ -171,13 +172,14 @@ GROUP BY
     holding_category
 ORDER BY
     (CASE
-        WHEN holding_category = '0-$100' THEN 1
-        WHEN holding_category = '$100-$1K' THEN 2
-        WHEN holding_category = '$1K-$5K' THEN 3
-        WHEN holding_category = '$5K-$10K' THEN 4
-        WHEN holding_category = '$10K-$50K' THEN 5
-        WHEN holding_category = '$50K-$250K' THEN 6
-        WHEN holding_category = '$250K+' THEN 7
+        WHEN holding_category = '0-$2' THEN 1
+        WHEN holding_category = '$2-$100' THEN 2
+        WHEN holding_category = '$100-$1K' THEN 3
+        WHEN holding_category = '$1K-$5K' THEN 4
+        WHEN holding_category = '$5K-$10K' THEN 5
+        WHEN holding_category = '$10K-$50K' THEN 6
+        WHEN holding_category = '$50K-$250K' THEN 7
+        WHEN holding_category = '$250K+' THEN 8
     END);
 ```
 
